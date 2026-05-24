@@ -1,0 +1,14 @@
+{
+    "name": "smart-infra-v2",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "npm run launch",
+        "launch": "scripts\\start_silent.bat",
+        "dev": "concurrently --names \"backend,frontend\" --prefix \"[{name}]\" --restart-tries 20 --restart-after 2000 \"npm run backend\" \"npm run frontend\"",
+        "backend": ".\\backend\\venv\\Scripts\\python.exe -m uvicorn main:app --app-dir backend --reload --reload-dir backend --reload-exclude detections --reload-exclude uploads --reload-exclude \"ai/*.log\" --reload-exclude \"logs/*.log\" --port 8000",
+        "frontend": "npm --prefix frontend run dev"
+    },
+    "dependencies": {
+        "concurrently": "^7.6.0"
+    }
+}

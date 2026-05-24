@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pymysql
+python-multipart
+python-dotenv
+ultralytics
+opencv-python
+requests
+cryptography
+gunicorn
+alembic
+bytez

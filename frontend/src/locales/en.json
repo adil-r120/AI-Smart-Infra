@@ -1,0 +1,72 @@
+{
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to access the dashboard",
+      "button": "Sign In",
+      "loading": "Signing in…",
+      "noAccount": "Don't have an account? ",
+      "switchAction": "Sign up"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Join Smart-Infra monitoring",
+      "button": "Create Account",
+      "loading": "Creating account…",
+      "hasAccount": "Already have an account? ",
+      "switchAction": "Sign in"
+    },
+    "tabs": {
+      "signIn": "Sign In",
+      "signUp": "Sign Up"
+    },
+    "fields": {
+      "accountType": "Account Type",
+      "roleUser": "User",
+      "roleAdmin": "Admin",
+      "fullName": "Full Name",
+      "namePlaceholder": "John Smith",
+      "adminInviteToken": "Admin Invite Token (Recommended)",
+      "invitePlaceholder": "Paste one-time invite token",
+      "adminSignupCode": "Admin Signup Code (Fallback)",
+      "signupCodePlaceholder": "Enter secure admin code",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholderSignup": "Min 8 characters",
+      "passwordPlaceholderSignin": "Your password",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Repeat your password"
+    },
+    "passwordStrength": {
+      "weak": "Weak",
+      "medium": "Medium",
+      "strong": "Strong"
+    },
+    "actions": {
+      "togglePassword": "Toggle password visibility",
+      "toggleConfirmPassword": "Toggle confirm password visibility",
+      "rememberMe": "Remember me",
+      "forgotPassword": "Forgot password?",
+      "forgotPasswordToast": "Password reset feature coming soon",
+      "orSecureAccessVia": "Or secure access via",
+      "termsOfService": "Terms of Service",
+      "termsToast": "Terms of Service viewing coming soon",
+      "privacyPolicy": "Privacy Policy",
+      "privacyToast": "Privacy Policy viewing coming soon"
+    },
+    "errors": {
+      "googleSignInFailed": "Google Sign-In failed"
+    },
+    "brand": {
+      "title": "AI Smart Infra",
+      "tagline": "AI-Powered Infrastructure Monitoring Platform",
+      "features": {
+        "aiDetection": "Real-time AI detection",
+        "gpsMonitoring": "Live GPS monitoring",
+        "securePipeline": "Secure data pipeline"
+      },
+      "systemStatus": "All systems operational"
+    }
+  }
+}

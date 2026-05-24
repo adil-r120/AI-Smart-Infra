@@ -1,0 +1,296 @@
+/* 
+  UrbanAdvisorModal.css — Premium Glassmorphic Design System 
+  Designed for Smart-Infra v2 Cognitive Layer
+*/
+
+.uam-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: uam-fade-in 0.3s ease-out;
+}
+
+.uam-modal {
+  background: rgba(255, 255, 255, 0.95);
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: uam-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .uam-modal {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Header Section --- */
+.uam-header {
+  background: linear-gradient(135deg, #2563eb 0%, #4338ca 100%);
+  padding: 24px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.uam-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.uam-icon-box {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.uam-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.uam-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.uam-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+}
+
+.uam-close-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg);
+}
+
+/* --- Content Section --- */
+.uam-body {
+  padding: 40px;
+  overflow-y: auto;
+  background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.03), transparent);
+  flex: 1;
+}
+
+.uam-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 24px;
+  border: 1px solid;
+}
+
+.uam-status-badge.healthy { background: #ecfdf5; color: #065f46; border-color: #d1fae5; }
+.uam-status-badge.critical { background: #fef2f2; color: #991b1b; border-color: #fee2e2; animation: uam-pulse-red 2s infinite; }
+.uam-status-badge.warning { background: #fffbeb; color: #92400e; border-color: #fef3c7; }
+
+.uam-narrative-container {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 40px;
+}
+
+.uam-narrative-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, #2563eb, transparent);
+  border-radius: 2px;
+}
+
+.uam-narrative-text {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1.7;
+  color: #1e293b;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.dark .uam-narrative-text { color: #e2e8f0; }
+
+.uam-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: #2563eb;
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: uam-blink 1s step-end infinite;
+}
+
+/* --- Intelligence Card --- */
+.uam-intel-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.dark .uam-intel-card {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.uam-intel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 20px;
+}
+
+.uam-rec-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.uam-rec-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 0.95rem;
+  color: #334155;
+  transition: transform 0.2s;
+}
+
+.dark .uam-rec-item { color: #cbd5e1; }
+
+.uam-rec-dot {
+  margin-top: 8px;
+  min-width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+}
+
+.uam-branding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 40px;
+  opacity: 0.3;
+}
+
+.uam-branding-line { height: 1px; flex: 1; background: #cbd5e1; }
+.uam-branding-text { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.2em; }
+
+/* --- Footer Section --- */
+.uam-footer {
+  padding: 24px 32px;
+  background: #f1f5f9;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.dark .uam-footer {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.uam-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.uam-btn-ghost { background: transparent; color: #64748b; }
+.uam-btn-ghost:hover { background: rgba(0, 0, 0, 0.05); color: #1e293b; }
+
+.uam-btn-primary { 
+  background: #0f172a; 
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.uam-btn-primary:hover {
+  background: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+/* --- Animations --- */
+@keyframes uam-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes uam-slide-up { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes uam-blink { from, to { opacity: 1; } 50% { opacity: 0; } }
+@keyframes uam-pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } }
+
+/* --- Loader --- */
+.uam-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  gap: 20px;
+}
+
+.uam-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  animation: uam-spin 1s linear infinite;
+}
+
+@keyframes uam-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

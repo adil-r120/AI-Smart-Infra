@@ -1,0 +1,70 @@
+# ==============================================================================
+#                 SMART-INFRA PROFESSIONAL GITIGNORE CONFIGURATION
+# ==============================================================================
+
+# --- SECURITY & ENVIRONMENT ---
+# Never check in secret keys, API credentials, or local environment overrides
+.env
+*.env
+.env.local
+.env.*.local
+backend/.env
+
+# --- BACKEND / PYTHON ---
+# Exclude Python runtime artifacts, compilations, and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# --- FRONTEND / NODE & VITE ---
+# Exclude Node dependencies, production builds, and diagnostic logs
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+frontend/tsc_errors.txt
+frontend/tsc_output.txt
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# --- APPLICATION DATA & AI INGESTION ---
+# Exclude runtime temporary logs, uploads, and AI inference output frames
+backend/detections/*.jpg
+backend/uploads/*.jpg
+backend/logs/*.log
+backend/ai/*.log
+backend/ai/vid_debug.log
+
+# --- SYSTEM & IDE CONFIGURATIONS ---
+# Exclude local OS files and editor-specific cache directories
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
