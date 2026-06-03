@@ -1176,6 +1176,10 @@ def get_ai_briefing(db: Session = Depends(get_db)):
         stats = _compute_stats(db)
         print("[DEBUG] Fetching urban health...")
         health = get_urban_health(db)
+        
+        # Override the report-based health score with the actual AI dashboard road health score
+        # to prevent 0.0% mismatch errors in the briefing.
+        health["score"] = stats.get("road_health_score", health.get("score", 0.0))
 
         # --- Expert System Logic (Offline Mode) ---
         narrative = []

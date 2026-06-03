@@ -905,39 +905,53 @@ const Dashboard: React.FC = () => {
                         {activeTab === "Webcam" && (
                             <div className="animate-in dashboard-home" style={{ padding: '24px' }}>
                                 {/* ── Header ── */}
-                                <div className="dashboard-header">
+                                <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', width: '100%' }}>
                                     <div>
                                         <h2 className="wcam-title"><Scan size={20} /> {t("dashboard.scanner.title", "AI Infrastructure Scanner")}</h2>
                                     </div>
-                                    <div className="dashboard-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                        <input
-                                            type="text"
-                                            value={cameraSource}
-                                            onChange={(e) => setCameraSource(e.target.value)}
-                                            placeholder="Server Link (URL)"
-                                            className="camera-input-small"
-                                            style={{ width: '120px' }}
-                                        />
+                                    <div className="dashboard-actions" style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
                                         {webcamPlaying && (
-                                            <button className="dash-action-btn" onClick={captureSnapshot} title="Save Snapshot">
-                                                <Download size={16} /><span>{t("dashboard.scanner.snapshotBtn", "Snapshot")}</span>
+                                            <button className="dash-action-btn medium" onClick={captureSnapshot} title="Save Snapshot">
+                                                <Download size={14} /><span>{t("dashboard.scanner.snapshotBtn", "Snapshot")}</span>
                                             </button>
                                         )}
 
-                                        <button
-                                            className={`dash-action-btn ${webcamPlaying ? 'active' : ''}`}
-                                            onClick={() => {
-                                                if (!webcamPlaying && !cameraSource.trim()) {
-                                                    alert("Please provide the server link.");
-                                                    return;
-                                                }
-                                                setWebcamPlaying(!webcamPlaying);
-                                                if (webcamPlaying) clearDetectionHistory();
-                                            }}
-                                        >
-                                            <ShieldAlert size={18} />
-                                            <span>{webcamPlaying ? t("dashboard.scanner.stop", "STOP SCAN") : t("dashboard.scanner.start", "START SCAN")}</span>
-                                        </button>
+
+
+                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
+                                            <input
+                                                type="text"
+                                                value={cameraSource}
+                                                onChange={(e) => setCameraSource(e.target.value)}
+                                                placeholder="Server Link (URL)"
+                                                className="camera-input-small"
+                                                style={{ width: '180px', fontSize: '0.8125rem' }}
+                                            />
+
+                                            <button
+                                                className={`dash-action-btn medium ${webcamPlaying && ipCamActive ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    if (webcamPlaying && ipCamActive) {
+                                                        setWebcamPlaying(false);
+                                                    } else {
+                                                        if (!cameraSource.trim()) {
+                                                            alert("Please provide the server link.");
+                                                            return;
+                                                        }
+                                                        if (webcamPlaying) {
+                                                            setWebcamPlaying(false);
+                                                            setTimeout(() => setWebcamPlaying(true), 300);
+                                                        } else {
+                                                            setWebcamPlaying(true);
+                                                        }
+                                                        clearDetectionHistory();
+                                                    }
+                                                }}
+                                            >
+                                                <ShieldAlert size={18} />
+                                                <span>{webcamPlaying && ipCamActive ? "STOP URL SCANNER" : "START URL SCANNER"}</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1079,10 +1093,26 @@ const Dashboard: React.FC = () => {
                                             <div className="standby-content">
                                                 <div className="pulse-ring"><Camera size={32} /></div>
                                                 <p className="standby-status">{t("dashboard.camera.offline", "CAMERA LINK OFFLINE")}</p>
-                                                <p className="standby-desc">{t("dashboard.camera.offlineDesc", "Click Activate Scanner to start the live feed")}</p>
-                                                <button className="dash-action-btn" style={{ margin: '0 auto', pointerEvents: 'auto' }} onClick={() => setWebcamPlaying(true)}>
-                                                    <Scan size={16} /> {t("dashboard.camera.activate", "Activate Scanner")}
-                                                </button>
+                                                <p className="standby-desc">{t("dashboard.camera.offlineDesc", "Click a scanner to start the live feed")}</p>
+                                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
+                                                    <button className="dash-action-btn medium" style={{ pointerEvents: 'auto' }} onClick={() => {
+                                                        setCameraSource("");
+                                                        setWebcamPlaying(true);
+                                                        clearDetectionHistory();
+                                                    }}>
+                                                        <Camera size={16} /> {t("dashboard.camera.activateWebcam", "Activate Web Camera")}
+                                                    </button>
+                                                    <button className="dash-action-btn medium" style={{ pointerEvents: 'auto' }} onClick={() => {
+                                                        if (!cameraSource.trim()) {
+                                                            alert("Please provide the server link in the input box above.");
+                                                            return;
+                                                        }
+                                                        setWebcamPlaying(true);
+                                                        clearDetectionHistory();
+                                                    }}>
+                                                        <ShieldAlert size={16} /> {t("dashboard.camera.activateUrl", "Activate URL Scanner")}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -1101,80 +1131,80 @@ const Dashboard: React.FC = () => {
                                             </button>
                                         </div>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
-                                             {detectionHistory.map((d, i) => {
-                                                 const color = CLASS_BOX_COLORS.get(d.class) || '#f97316';
-                                                 const isHigh = d.confidence >= 0.7;
-                                                 const isMed = d.confidence >= 0.4 && d.confidence < 0.7;
-                                                 const confidenceStatus = isHigh ? "High" : isMed ? "Medium" : "Low";
-                                                 const statusColor = isHigh ? "#10b981" : isMed ? "#f59e0b" : "#ef4444";
-                                                 const icon = d.class === 'person' ? '👤' : d.class === 'pothole' ? '🕳️' : '🚗';
-                                                 
-                                                 return (
-                                                     <div 
-                                                         key={i} 
-                                                         style={{ 
-                                                             padding: '14px', 
-                                                             borderLeft: `4px solid ${color}`, 
-                                                             display: 'flex', 
-                                                             flexDirection: 'column', 
-                                                             gap: '8px', 
-                                                             background: 'var(--bg-surface)', 
-                                                             border: '1px solid var(--border)', 
-                                                             borderRadius: '12px',
-                                                             boxShadow: 'var(--shadow-sm)',
-                                                             position: 'relative',
-                                                             overflow: 'hidden'
-                                                         }}
-                                                     >
-                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                             <span style={{ 
-                                                                 fontSize: '0.72rem', 
-                                                                 color: 'var(--text-main)', 
-                                                                 fontWeight: 800, 
-                                                                 textTransform: 'uppercase', 
-                                                                 letterSpacing: '0.04em',
-                                                                 display: 'flex',
-                                                                 alignItems: 'center',
-                                                                 gap: '5px'
-                                                             }}>
-                                                                 {icon} {d.class}
-                                                             </span>
-                                                             <span style={{ 
-                                                                 fontSize: '0.62rem', 
-                                                                 fontWeight: 800, 
-                                                                 color: statusColor,
-                                                                 background: `${statusColor}15`,
-                                                                 padding: '1px 6px',
-                                                                 borderRadius: '4px',
-                                                                 textTransform: 'uppercase',
-                                                                 letterSpacing: '0.03em'
-                                                             }}>
-                                                                 {confidenceStatus}
-                                                             </span>
-                                                         </div>
-                                                         
-                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-                                                             <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                                                                 {Math.round(d.confidence * 100)}%
-                                                             </span>
-                                                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("dashboard.log.confidence", "confidence")}</span>
-                                                         </div>
-                                                         
-                                                         <div style={{ height: '4px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden', marginTop: '2px' }}>
-                                                             <div 
-                                                                 style={{ 
-                                                                     height: '100%', 
-                                                                     width: `${d.confidence * 100}%`, 
-                                                                     background: color, 
-                                                                     borderRadius: '4px', 
-                                                                     boxShadow: `0 0 6px ${color}80`,
-                                                                     transition: 'width 0.4s' 
-                                                                 }} 
-                                                             />
-                                                         </div>
-                                                     </div>
-                                                 );
-                                             })}
+                                            {detectionHistory.map((d, i) => {
+                                                const color = CLASS_BOX_COLORS.get(d.class) || '#f97316';
+                                                const isHigh = d.confidence >= 0.7;
+                                                const isMed = d.confidence >= 0.4 && d.confidence < 0.7;
+                                                const confidenceStatus = isHigh ? "High" : isMed ? "Medium" : "Low";
+                                                const statusColor = isHigh ? "#10b981" : isMed ? "#f59e0b" : "#ef4444";
+                                                const icon = d.class === 'person' ? '👤' : d.class === 'pothole' ? '🕳️' : '🚗';
+
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        style={{
+                                                            padding: '14px',
+                                                            borderLeft: `4px solid ${color}`,
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '8px',
+                                                            background: 'var(--bg-surface)',
+                                                            border: '1px solid var(--border)',
+                                                            borderRadius: '12px',
+                                                            boxShadow: 'var(--shadow-sm)',
+                                                            position: 'relative',
+                                                            overflow: 'hidden'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span style={{
+                                                                fontSize: '0.72rem',
+                                                                color: 'var(--text-main)',
+                                                                fontWeight: 800,
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.04em',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '5px'
+                                                            }}>
+                                                                {icon} {d.class}
+                                                            </span>
+                                                            <span style={{
+                                                                fontSize: '0.62rem',
+                                                                fontWeight: 800,
+                                                                color: statusColor,
+                                                                background: `${statusColor}15`,
+                                                                padding: '1px 6px',
+                                                                borderRadius: '4px',
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.03em'
+                                                            }}>
+                                                                {confidenceStatus}
+                                                            </span>
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+                                                            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                                                                {Math.round(d.confidence * 100)}%
+                                                            </span>
+                                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("dashboard.log.confidence", "confidence")}</span>
+                                                        </div>
+
+                                                        <div style={{ height: '4px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden', marginTop: '2px' }}>
+                                                            <div
+                                                                style={{
+                                                                    height: '100%',
+                                                                    width: `${d.confidence * 100}%`,
+                                                                    background: color,
+                                                                    borderRadius: '4px',
+                                                                    boxShadow: `0 0 6px ${color}80`,
+                                                                    transition: 'width 0.4s'
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

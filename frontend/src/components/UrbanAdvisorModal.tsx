@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Sparkles, X, Terminal, ArrowRight, Save, Clock, BrainCircuit } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import './UrbanAdvisorModal.css';
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -104,10 +105,10 @@ const UrbanAdvisorModal: React.FC<UrbanAdvisorProps> = ({ isOpen, onClose }) => 
               <BrainCircuit size={28} />
             </div>
             <div>
-              <h2 className="uam-title">Urban AI Resilience Report</h2>
+              <h2 className="uam-title">AI Infrastructure Analysis</h2>
               <div className="uam-subtitle">
                 <Clock size={12} /> 
-                {loading ? "ESTABLISHING NEURAL LINK..." : (data?.generated_at?.toUpperCase() || "SYNCHRONIZING...")}
+                {loading ? "ANALYZING INFRASTRUCTURE..." : (data?.generated_at?.toUpperCase() || "REPORT GENERATED")}
               </div>
             </div>
           </div>
@@ -137,10 +138,10 @@ const UrbanAdvisorModal: React.FC<UrbanAdvisorProps> = ({ isOpen, onClose }) => 
               {/* Narrative Analysis */}
               <div className="uam-narrative-container">
                 <div className="uam-narrative-accent"></div>
-                <p className="uam-narrative-text">
-                  {displayText}
+                <div className="uam-narrative-text">
+                  <ReactMarkdown>{displayText}</ReactMarkdown>
                   {data && index < data.briefing.length && <span className="uam-cursor"></span>}
-                </p>
+                </div>
               </div>
 
               {/* Actionable Recommendations */}

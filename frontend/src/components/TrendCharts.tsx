@@ -50,7 +50,7 @@ const TrendCharts: React.FC<TrendChartsProps> = ({ stats }) => {
                 boxShadow: 'var(--shadow-premium)'
             }}>
                 <div style={{ width: '100%', height: 220 }}>
-                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                    <ResponsiveContainer width="99%" height="100%" minWidth={100} minHeight={100}>
                             <BarChart data={data} barSize={24}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} opacity={0.5} />
                                 <XAxis
