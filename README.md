@@ -1,4 +1,4 @@
-# 📡 Smart-Infra: An AI-Based Framework for Real-Time Detection & Infrastructure Monitoring
+# 📡 Smart-Infra: AI Infrastructure & Monitoring System
 
 > [!IMPORTANT]
 > **Next-Generation Surveillance**: Smart-Infra is a high-performance, AI-driven platform for infrastructure monitoring. It leverages YOLOv8 and OpenVINO to detect, track, and log infrastructure anomalies in real-time.
