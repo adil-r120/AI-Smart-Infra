@@ -51,7 +51,7 @@ export default function ProtectedRoute() {
         checkLocation();
     }, [token, loading]);
 
-    if (loading || gpsStatus === 'loading') {
+    if (loading) {
         return (
             <div style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -63,7 +63,7 @@ export default function ProtectedRoute() {
                     border: "2.5px solid var(--primary)", borderTopColor: "transparent",
                     animation: "spin 0.8s linear infinite",
                 }} />
-                {loading ? 'Restoring session…' : 'Checking location…'}
+                Restoring session…
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
         );
@@ -71,6 +71,24 @@ export default function ProtectedRoute() {
 
     if (!token) {
         return <Navigate to="/login" replace />;
+    }
+
+    if (gpsStatus === 'loading') {
+        return (
+            <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                height: "100vh", background: "var(--bg-body)", color: "var(--text-muted)",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "0.9rem", gap: "12px",
+            }}>
+                <div style={{
+                    width: 20, height: 20, borderRadius: "50%",
+                    border: "2.5px solid var(--primary)", borderTopColor: "transparent",
+                    animation: "spin 0.8s linear infinite",
+                }} />
+                Checking location…
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
     }
 
     if (gpsStatus === 'prompt') {

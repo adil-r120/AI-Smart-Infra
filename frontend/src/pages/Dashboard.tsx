@@ -676,7 +676,7 @@ const Dashboard: React.FC = () => {
     return (
         <div className={`dashboard-root ${theme}-theme`}>
 
-            <header className="top-full-header" style={{ flexShrink: 0, zIndex: 10 }}>
+            <header className="top-full-header" style={{ flexShrink: 0, zIndex: 999 }}>
                 <Logo size="medium" showText={true} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {user?.is_admin && (
@@ -740,6 +740,7 @@ const Dashboard: React.FC = () => {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '12px',
+                                background: 'var(--bg-card)',
                                 boxShadow: 'var(--shadow-premium)',
                                 border: '1px solid var(--border)',
                                 borderRadius: '16px'
@@ -834,54 +835,7 @@ const Dashboard: React.FC = () => {
                                     <AnalyticsSection stats={stats} />
                                 </div>
 
-                                <div style={{ marginTop: 32 }}>
-                                    <AiScanner
-                                        result={result}
-                                        loading={loading}
-                                        scannerStatus={scannerStatus}
-                                        isDragging={isDragging}
-                                        preview={preview}
-                                        fileInputRef={fileInputRef}
-                                        imageRef={imageRef}
-                                        canvasRef={canvasRef}
-                                        onFileChange={onFileChange}
-                                        handleDragOver={(e: any) => { e.preventDefault(); setIsDragging(true); }}
-                                        handleDragLeave={() => setIsDragging(false)}
-                                        handleDrop={(e: any) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
-                                        drawDetections={drawDetections}
-                                        resetScanner={() => { setFile(null); setPreview(null); setResult(null); }}
-                                        onDetectionsChange={(newDetections: any[]) => {
-                                            // Handle new detections if needed
-                                            if (newDetections.length > 0) {
-                                                const newAlerts = newDetections.map((d: any) => ({
-                                                    id: Date.now() + Math.random(),
-                                                    type: d.pothole_present ? 'pothole' : 'structural',
-                                                    severity: d.pothole_present ? 'high' : 'medium',
-                                                    message: d.pothole_present ? `Pothole detected in Sector ${Math.floor(Math.random() * 10) + 1}` : `Structural anomaly detected`,
-                                                    timestamp: new Date().toISOString(),
-                                                    location: 'Sector ' + (Math.floor(Math.random() * 10) + 1),
-                                                    status: 'pending'
-                                                }));
-                                                setAlerts(prev => {
-                                                    const now = Date.now();
-                                                    const filteredNewAlerts = newAlerts.filter((newA: any) => {
-                                                        // Prevent duplicate notifications of the same type and message within 10 seconds
-                                                        const isDuplicate = prev.some(p =>
-                                                            p.type === newA.type &&
-                                                            p.message === newA.message &&
-                                                            (now - new Date(p.timestamp).getTime() < 10000)
-                                                        );
-                                                        return !isDuplicate;
-                                                    });
 
-                                                    if (filteredNewAlerts.length === 0) return prev;
-                                                    // Add new alerts and keep maximum of 20 in the history
-                                                    return [...filteredNewAlerts, ...prev].slice(0, 20);
-                                                });
-                                            }
-                                        }}
-                                    />
-                                </div>
                             </div>
                         )}
 
@@ -1206,6 +1160,57 @@ const Dashboard: React.FC = () => {
                                                 );
                                             })}
                                         </div>
+                                    </div>
+                                )}
+
+                                {!webcamPlaying && (
+                                    <div style={{ marginTop: 32 }}>
+                                        <AiScanner
+                                            result={result}
+                                        loading={loading}
+                                        scannerStatus={scannerStatus}
+                                        isDragging={isDragging}
+                                        preview={preview}
+                                        fileInputRef={fileInputRef}
+                                        imageRef={imageRef}
+                                        canvasRef={canvasRef}
+                                        onFileChange={onFileChange}
+                                        handleDragOver={(e: any) => { e.preventDefault(); setIsDragging(true); }}
+                                        handleDragLeave={() => setIsDragging(false)}
+                                        handleDrop={(e: any) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
+                                        drawDetections={drawDetections}
+                                        resetScanner={() => { setFile(null); setPreview(null); setResult(null); }}
+                                        onDetectionsChange={(newDetections: any[]) => {
+                                            // Handle new detections if needed
+                                            if (newDetections.length > 0) {
+                                                const newAlerts = newDetections.map((d: any) => ({
+                                                    id: Date.now() + Math.random(),
+                                                    type: d.pothole_present ? 'pothole' : 'structural',
+                                                    severity: d.pothole_present ? 'high' : 'medium',
+                                                    message: d.pothole_present ? `Pothole detected in Sector ${Math.floor(Math.random() * 10) + 1}` : `Structural anomaly detected`,
+                                                    timestamp: new Date().toISOString(),
+                                                    location: 'Sector ' + (Math.floor(Math.random() * 10) + 1),
+                                                    status: 'pending'
+                                                }));
+                                                setAlerts(prev => {
+                                                    const now = Date.now();
+                                                    const filteredNewAlerts = newAlerts.filter((newA: any) => {
+                                                        // Prevent duplicate notifications of the same type and message within 10 seconds
+                                                        const isDuplicate = prev.some(p =>
+                                                            p.type === newA.type &&
+                                                            p.message === newA.message &&
+                                                            (now - new Date(p.timestamp).getTime() < 10000)
+                                                        );
+                                                        return !isDuplicate;
+                                                    });
+
+                                                    if (filteredNewAlerts.length === 0) return prev;
+                                                    // Add new alerts and keep maximum of 20 in the history
+                                                    return [...filteredNewAlerts, ...prev].slice(0, 20);
+                                                });
+                                            }
+                                        }}
+                                    />
                                     </div>
                                 )}
                             </div>
