@@ -75,6 +75,15 @@ npm run dev
 
 ---
 
+## 📊 Model Performance (YOLOv8)
+The core infrastructure anomaly detection model was custom-trained and evaluated with the following validation metrics:
+- **mAP@50 (Mean Average Precision):** `66.50%`
+- **Precision:** `65.92%`
+- **Recall:** `62.15%`
+- **F1-Score:** `~64.00%`
+
+---
+
 ## 🛡️ Security & Notes
 - **API Configuration**: All API endpoints are centralized in `frontend/src/api/config.ts`.
 - **Mirroring**: The surveillance view uses a smart-mirroring system to correctly display HUD elements over flipped video feeds.
