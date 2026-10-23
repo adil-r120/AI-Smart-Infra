@@ -13,20 +13,26 @@ import AnalyticsSection from "../components/AnalyticsSection";
 import AdminConsole from "../components/AdminConsole";
 import ReportIssue from "./ReportIssue";
 import IntelligenceHub from "../components/IntelligenceHub";
+import MyReports from "../components/MyReports";
 import { Detection, DetectionResult, DBEntry, Stats } from "../types";
-import { AlertTriangle, X, Activity, Camera, Database, Sun, Moon, RefreshCw, ShieldAlert, Scan, Download, Eye, Crosshair, Radio, Zap, Maximize, Minimize, Trash2, WifiOff, Shield, Bell } from "lucide-react";
+import { AlertTriangle, X, Activity, Camera, Database, Sun, Moon, RefreshCw, ShieldAlert, Scan, Download, Eye, Crosshair, Radio, Zap, Maximize, Minimize, Trash2, WifiOff, Shield, Bell, Video, Play, Pause, Layers, Menu, Check, Upload, Settings, User as UserIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import Logo from "../components/Logo";
 import { API_BASE } from "../api/config";
 import "./Dashboard.css";
 
 const CLASS_BOX_COLORS = new Map<string, string>([
-    ["pothole", "#f97316"],
+    ["pothole", "#c72c07ff"],
     ["car", "#38bdf8"],
-    ["truck", "#38bdf8"],
-    ["bus", "#38bdf8"],
-    ["motorcycle", "#38bdf8"],
+    ["truck", "#f59e0b"],
+    ["bus", "#f97316"],
+    ["motorcycle", "#06b6d4"],
     ["person", "#a78bfa"],
+    ["bicycle", "#84cc16"],
+    ["garbage", "#10b981"],
+    ["leakage", "#0284c7"],
+    ["crack", "#ec4899"],
+    ["danger", "#dc2626"],
 ]);
 
 const DANGER_CLASSES = new Set(["gun", "weapon", "knife", "Scissors", "pistol", "violence", "danger"]);
@@ -37,19 +43,123 @@ const PRIVACY_CLASSES = new Set(["person", "car", "motorcycle", "bus", "truck", 
 const Dashboard: React.FC = () => {
     const { t } = useTranslation();
     const { user } = useAuth();
+    const [userAvatar, setUserAvatar] = useState<string | null>(() => {
+        const key = `si_user_avatar_${user?.id || user?.email || "default"}`;
+        return localStorage.getItem(key);
+    });
+    const [customName, setCustomName] = useState<string>(() => {
+        const key = `si_user_custom_name_${user?.id || user?.email || "default"}`;
+        return localStorage.getItem(key) || user?.name || "";
+    });
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [editNameInput, setEditNameInput] = useState("");
+    const [nameSavedFeedback, setNameSavedFeedback] = useState(false);
+    const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+    const PRESET_AVATARS = ["🤖", "🛡️", "⚡", "👷", "🎯", "🏙️", "🕵️", "🚀"];
+
+    useEffect(() => {
+        if (user) {
+            const avatarKey = `si_user_avatar_${user.id || user.email || "default"}`;
+            const savedAvatar = localStorage.getItem(avatarKey);
+            setUserAvatar(savedAvatar || null);
+
+            const nameKey = `si_user_custom_name_${user.id || user.email || "default"}`;
+            const savedName = localStorage.getItem(nameKey);
+            const initialName = savedName || user.name || user.email?.split("@")[0] || "User";
+            setCustomName(initialName);
+            setEditNameInput(initialName);
+        }
+    }, [user]);
+
+    const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const uploadFile = e.target.files?.[0];
+        if (!uploadFile) return;
+        if (!uploadFile.type.startsWith("image/")) {
+            alert("Please choose a valid image file (PNG, JPG, WebP, etc.)");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const size = 160;
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    const minSide = Math.min(img.width, img.height);
+                    const sx = (img.width - minSide) / 2;
+                    const sy = (img.height - minSide) / 2;
+                    ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+                    const dataUrl = canvas.toDataURL("image/webp", 0.9);
+                    setUserAvatar(dataUrl);
+                    const key = `si_user_avatar_${user?.id || user?.email || "default"}`;
+                    localStorage.setItem(key, dataUrl);
+                }
+            };
+            img.src = event.target?.result as string;
+        };
+        reader.readAsDataURL(uploadFile);
+    };
+
+    const handleSelectPresetAvatar = (icon: string) => {
+        setUserAvatar(icon);
+        const key = `si_user_avatar_${user?.id || user?.email || "default"}`;
+        localStorage.setItem(key, icon);
+    };
+
+    const handleRemoveAvatar = () => {
+        setUserAvatar(null);
+        const key = `si_user_avatar_${user?.id || user?.email || "default"}`;
+        localStorage.removeItem(key);
+        if (avatarFileInputRef.current) avatarFileInputRef.current.value = "";
+    };
+
+    const handleSaveCustomName = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        const trimmed = editNameInput.trim();
+        if (!trimmed) return;
+        setCustomName(trimmed);
+        const key = `si_user_custom_name_${user?.id || user?.email || "default"}`;
+        localStorage.setItem(key, trimmed);
+        setNameSavedFeedback(true);
+        setTimeout(() => setNameSavedFeedback(false), 2000);
+    };
+
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
-    const [result, setResult] = useState<DetectionResult | null>(null);
+    // Separate states for Upload Issues (image scanner) and Live Feed (webcam / IP camera)
+    const [scannerResult, setScannerResult] = useState<DetectionResult | null>(null);
+    const [webcamResult, setWebcamResult] = useState<DetectionResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState(() => {
         const saved = localStorage.getItem("si_active_tab");
-        const validTabs = ["Home", "Map", "History", "Admin", "Report", "Configuration", "Webcam"];
-        return (saved && validTabs.includes(saved)) ? saved : "Home";
+        const validTabs = ["Home", "Scanner", "Map", "History", "Admin", "Report", "MyReports", "Configuration", "Webcam"];
+        if (saved && validTabs.includes(saved)) {
+            // Non-admin cannot default to admin-only tabs
+            if (!user?.is_admin && (saved === "Home" || saved === "Admin" || saved === "History")) {
+                return "Report";
+            }
+            // Admin cannot access user-only tabs (Scanner, Webcam, Report, MyReports)
+            if (user?.is_admin && (saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
+                return "Home";
+            }
+            return saved;
+        }
+        return user?.is_admin ? "Home" : "Report";
     });
 
     useEffect(() => {
-        localStorage.setItem("si_active_tab", activeTab);
-    }, [activeTab]);
+        if (!user?.is_admin && (activeTab === "Home" || activeTab === "Admin" || activeTab === "History")) {
+            setActiveTab("Report");
+        } else if (user?.is_admin && (activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
+            setActiveTab("Home");
+        } else {
+            localStorage.setItem("si_active_tab", activeTab);
+        }
+    }, [activeTab, user]);
 
     const [stats, setStats] = useState<Stats | null>(null);
     const [mapData, setMapData] = useState<DBEntry[]>([]);
@@ -118,26 +228,28 @@ const Dashboard: React.FC = () => {
     const fetchAlerts = async () => {
         try {
             const res = await axios.get(`${API_BASE}/alerts`, getAuthConfig());
-            setAlerts(prev => {
-                const newAlerts = res.data.filter((a: any) =>
-                    !prev.some(p => p.id === a.id) && !dismissedAlertsRef.current.has(a.id)
-                );
-                // Keep more history in the dropdown
-                return [...newAlerts, ...prev].slice(0, 10);
+            // Filter out locally-dismissed items (for camera alerts which have no server-side read tracking)
+            // Citizen DB notifications are filtered by is_read server-side, so show them all
+            const filtered = res.data.filter((a: any) => {
+                if (a.is_read) return false;           // already read on server
+                return !dismissedAlertsRef.current.has(a.id);
             });
+            setAlerts(filtered);
         } catch (err) {
         }
     };
 
-    const handleDismissAlert = (id: number) => {
+    const handleDismissAlert = async (id: number) => {
         dismissedAlertsRef.current.add(id);
         setAlerts(prev => prev.filter(a => a.id !== id));
+        try { await axios.post(`${API_BASE}/notifications/${id}/read`, {}, getAuthConfig()); } catch { }
     };
 
-    const handleClearAllAlerts = () => {
+    const handleClearAllAlerts = async () => {
         alerts.forEach(a => dismissedAlertsRef.current.add(a.id));
         setAlerts([]);
         setShowNotifications(false);
+        try { await axios.post(`${API_BASE}/notifications/clear`, {}, getAuthConfig()); } catch { }
     };
 
     useEffect(() => {
@@ -174,7 +286,12 @@ const Dashboard: React.FC = () => {
         socket.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                if (message.type === "new_detection") {
+                if (
+                    message.type === "new_detection" ||
+                    message.type === "new_report" ||
+                    message.type === "report_updated" ||
+                    message.type === "notification"
+                ) {
                     fetchStats(); fetchMapData(); fetchAlerts();
                 }
             } catch (err) { console.error("[WS] Message parsing error", err); }
@@ -182,7 +299,7 @@ const Dashboard: React.FC = () => {
 
         const interval = setInterval(() => {
             fetchStats(); fetchAlerts(); fetchMapData();
-        }, 30000);
+        }, 15000); // poll every 15s so notifications appear promptly
 
         return () => {
             clearInterval(interval);
@@ -197,12 +314,12 @@ const Dashboard: React.FC = () => {
     const drawDetections = () => {
         const canvas = canvasRef.current;
         const img = imageRef.current;
-        if (!canvas || !img || !result) return;
+        if (!canvas || !img || !scannerResult) return;
 
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        console.log("[SCANNER] Drawing detections:", result);
+        console.log("[SCANNER] Drawing detections:", scannerResult);
 
         // Set canvas internal resolution to match the element size
         canvas.width = img.clientWidth;
@@ -231,7 +348,11 @@ const Dashboard: React.FC = () => {
         const scaleX = renderedW / img.naturalWidth;
         const scaleY = renderedH / img.naturalHeight;
 
-        const allDets: Detection[] = [...(result.potholes ?? []), ...(result.objects ?? [])];
+        const allDets: Detection[] = [
+            ...(scannerResult.potholes ?? []),
+            ...(scannerResult.objects ?? []),
+            ...(scannerResult.infra_detections ?? [])
+        ];
 
         if (allDets.length === 0) {
             console.log("[SCANNER] No objects detected to draw.");
@@ -243,7 +364,7 @@ const Dashboard: React.FC = () => {
             const ry1 = y1 * scaleY + offsetY;
             const rw = (x2 - x1) * scaleX;
             const rh = (y2 - y1) * scaleY;
-            const color = CLASS_BOX_COLORS.get(det.class) || "#f97316";
+            const color = CLASS_BOX_COLORS.get(det.class.toLowerCase()) || "#f97316";
             const label = `${det.class.toUpperCase()} (${Math.round(det.confidence * 100)}%)`;
 
             console.log(`[SCANNER] Rendering ${det.class} at [${rx1}, ${ry1}, ${rw}, ${rh}]`);
@@ -260,33 +381,61 @@ const Dashboard: React.FC = () => {
                 ctx.fillRect(rx1, ry1, rw, rh);
             }
 
+            // Outer Bounding Box
             ctx.strokeStyle = color;
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 2.5;
             ctx.lineJoin = "round";
             ctx.strokeRect(rx1, ry1, rw, rh);
 
+            // Cybernetic Corner Brackets
+            const cornerSize = Math.min(10, rw / 4, rh / 4);
+            ctx.lineWidth = 4;
+            // Top-left
+            ctx.beginPath();
+            ctx.moveTo(rx1, ry1 + cornerSize);
+            ctx.lineTo(rx1, ry1);
+            ctx.lineTo(rx1 + cornerSize, ry1);
+            ctx.stroke();
+            // Top-right
+            ctx.beginPath();
+            ctx.moveTo(rx1 + rw - cornerSize, ry1);
+            ctx.lineTo(rx1 + rw, ry1);
+            ctx.lineTo(rx1 + rw, ry1 + cornerSize);
+            ctx.stroke();
+            // Bottom-left
+            ctx.beginPath();
+            ctx.moveTo(rx1, ry1 + rh - cornerSize);
+            ctx.lineTo(rx1, ry1 + rh);
+            ctx.lineTo(rx1 + cornerSize, ry1 + rh);
+            ctx.stroke();
+            // Bottom-right
+            ctx.beginPath();
+            ctx.moveTo(rx1 + rw - cornerSize, ry1 + rh);
+            ctx.lineTo(rx1 + rw, ry1 + rh);
+            ctx.lineTo(rx1 + rw, ry1 + rh - cornerSize);
+            ctx.stroke();
+
             // Premium Label Drawing
-            const fontSize = 10;
-            ctx.font = `bold ${fontSize}px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+            const fontSize = 11;
+            ctx.font = `bold ${fontSize}px 'JetBrains Mono', 'Inter', -apple-system, sans-serif`;
             const textContent = label;
             const textMetrics = ctx.measureText(textContent);
             const textWidth = textMetrics.width;
             const labelPaddingX = 6;
-            const labelPaddingY = 4;
+            const labelPaddingY = 3;
             const labelHeight = fontSize + (labelPaddingY * 2);
 
             // Draw label background pill
             ctx.fillStyle = color;
             const labelY = ry1 - labelHeight < 0 ? ry1 : ry1 - labelHeight;
 
-            // Create a rounded rectangle for the label
             ctx.beginPath();
-            const radius = 3;
+            const radius = 4;
             ctx.roundRect(rx1, labelY, textWidth + (labelPaddingX * 2), labelHeight, radius);
             ctx.fill();
 
             // Draw label text
-            ctx.fillStyle = "white";
+            ctx.fillStyle = "#ffffff";
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             ctx.fillText(textContent, rx1 + labelPaddingX, labelY + labelPaddingY);
@@ -294,12 +443,12 @@ const Dashboard: React.FC = () => {
     };
 
     useEffect(() => {
-        if (result) {
+        if (scannerResult) {
             drawDetections();
             setTimeout(drawDetections, 100);
             setTimeout(drawDetections, 500);
         }
-    }, [result]);
+    }, [scannerResult]);
 
     const startDetection = async (targetFile?: File) => {
         const fileToUpload = targetFile || file;
@@ -313,7 +462,7 @@ const Dashboard: React.FC = () => {
             if (response.data.error) {
                 setScannerStatus(`Error: ${response.data.error}`);
             } else {
-                setResult(response.data);
+                setScannerResult(response.data);
                 setScannerStatus("Scan Complete");
 
                 // Optimistic stats update
@@ -358,7 +507,12 @@ const Dashboard: React.FC = () => {
             }
         } catch (err: any) {
             console.error("[SCANNER] Request failed:", err);
-            setScannerStatus(err.response?.status === 413 ? "File too large" : "Server Connection Error");
+            const msg = err.response?.data?.detail
+                || err.response?.data?.message
+                || (err.response?.status === 413 ? "File too large (max 25MB)"
+                    : err.response?.status === 401 ? "Session expired. Please log in again."
+                        : "Server Connection Error");
+            setScannerStatus(msg);
         }
         finally { setLoading(false); }
     };
@@ -374,7 +528,7 @@ const Dashboard: React.FC = () => {
         if (preview) URL.revokeObjectURL(preview);
         setFile(selected);
         setPreview(URL.createObjectURL(selected));
-        setResult(null);
+        setScannerResult(null);
         await startDetection(selected);
     };
 
@@ -448,6 +602,7 @@ const Dashboard: React.FC = () => {
         webcamSecondsRef.current = 0;
         setWebcamTime("00:00");
         setFrameCount(0);
+        setWebcamResult(null);
     };
 
     const toggleFullscreen = () => {
@@ -506,6 +661,11 @@ const Dashboard: React.FC = () => {
         if (!targetElement) return;
         // Wait until the IP cam image has loaded at least one frame
         if (isIpCam && !(targetElement as HTMLImageElement).naturalWidth) return;
+        // For webcam video, wait until it has enough data to render a frame
+        if (!isIpCam) {
+            const vid = targetElement as HTMLVideoElement;
+            if (vid.readyState < 2 || vid.videoWidth === 0 || vid.videoHeight === 0) return;
+        }
         try {
             const canvas = document.createElement("canvas");
             canvas.width = isIpCam ? (targetElement as HTMLImageElement).naturalWidth || 1280 : (targetElement as HTMLVideoElement).videoWidth || 1280;
@@ -520,7 +680,7 @@ const Dashboard: React.FC = () => {
                 formData.append("file", blob, "frame.jpg");
                 try {
                     const response = await axios.post(`${API_BASE}/detect`, formData, getAuthConfig());
-                    setResult(response.data);
+                    setWebcamResult(response.data);
 
                     const newDets: Detection[] = [...(response.data.potholes ?? []), ...(response.data.objects ?? [])];
                     if (newDets.length > 0) {
@@ -585,22 +745,22 @@ const Dashboard: React.FC = () => {
             if (interval) clearInterval(interval);
             stopWebcam();
         };
-    }, [activeTab, webcamPlaying]);
+    }, [activeTab, webcamPlaying, pollInterval]);
 
     const drawWebcamDetections = () => {
         const canvas = webcamCanvasRef.current;
         const targetElement = ipCamActive ? ipCamImgRef.current : videoRef.current;
-        if (!canvas || !targetElement || !result || !webcamPlaying) return;
+        if (!canvas || !targetElement || !webcamResult || !webcamPlaying) return;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        console.log("[WEBCAM] Drawing detections:", result);
+        console.log("[WEBCAM] Drawing detections:", webcamResult);
 
         canvas.width = ipCamActive ? (targetElement as HTMLImageElement).naturalWidth || 1280 : (targetElement as HTMLVideoElement).videoWidth || 1280;
         canvas.height = ipCamActive ? (targetElement as HTMLImageElement).naturalHeight || 720 : (targetElement as HTMLVideoElement).videoHeight || 720;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const allDets: Detection[] = [...(result.potholes ?? []), ...(result.objects ?? [])];
+        const allDets: Detection[] = [...(webcamResult.potholes ?? []), ...(webcamResult.objects ?? [])];
         allDets.forEach((det: Detection) => {
             const [x1, y1, x2, y2] = det.bbox;
             const rw = x2 - x1;
@@ -670,35 +830,115 @@ const Dashboard: React.FC = () => {
     };
 
     useEffect(() => {
-        if (activeTab === "Webcam" && result) drawWebcamDetections();
-    }, [result, activeTab]);
+        if (activeTab === "Webcam" && webcamResult) drawWebcamDetections();
+    }, [webcamResult, activeTab]);
+
+    const handleSampleSelect = async (samplePath: string) => {
+        try {
+            setLoading(true);
+            setScannerStatus("Loading Sample Image...");
+            const fullUrl = samplePath.startsWith("http")
+                ? samplePath
+                : `${API_BASE}${samplePath.startsWith("/") ? "" : "/"}${samplePath}`;
+            const res = await fetch(fullUrl);
+            if (!res.ok) {
+                throw new Error(`Failed to load sample image (HTTP ${res.status})`);
+            }
+            const blob = await res.blob();
+            const filename = samplePath.split("/").pop() || "sample_road.jpg";
+            const sampleFile = new File([blob], filename, { type: blob.type || "image/jpeg" });
+            processFile(sampleFile);
+        } catch (e: any) {
+            console.error("Failed to load sample", e);
+            setScannerStatus(e.message || "Failed to load sample image");
+            setLoading(false);
+        }
+    };
+
+    const handleResetScanner = () => {
+        setFile(null);
+        setPreview(null);
+        setScannerResult(null);
+        setScannerStatus(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    const handleDetectionsChange = (newDetections: any[]) => {
+        if (newDetections.length > 0) {
+            const newAlerts = newDetections.map((d: any) => ({
+                id: Date.now() + Math.random(),
+                type: d.class === 'pothole' ? 'pothole' : 'structural',
+                severity: d.class === 'pothole' ? 'high' : 'medium',
+                message: `${(d.class || 'Structural').toUpperCase()} detected (Confidence: ${(d.confidence * 100).toFixed(0)}%)`,
+                timestamp: new Date().toISOString(),
+                location: 'Neural Scanner',
+                status: 'pending'
+            }));
+            setAlerts(prev => {
+                const now = Date.now();
+                const filteredNewAlerts = newAlerts.filter((newA: any) => {
+                    const isDuplicate = prev.some(p =>
+                        p.type === newA.type &&
+                        p.message === newA.message &&
+                        (now - new Date(p.timestamp).getTime() < 10000)
+                    );
+                    return !isDuplicate;
+                });
+                if (filteredNewAlerts.length === 0) return prev;
+                return [...filteredNewAlerts, ...prev].slice(0, 20);
+            });
+        }
+    };
+
+    const renderScannerComponent = () => (
+        <AiScanner
+            result={scannerResult}
+            loading={loading}
+            scannerStatus={scannerStatus}
+            isDragging={isDragging}
+            preview={preview}
+            fileInputRef={fileInputRef}
+            imageRef={imageRef}
+            canvasRef={canvasRef}
+            onFileChange={onFileChange}
+            handleDragOver={(e: any) => { e.preventDefault(); setIsDragging(true); }}
+            handleDragLeave={() => setIsDragging(false)}
+            handleDrop={(e: any) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
+            drawDetections={drawDetections}
+            resetScanner={handleResetScanner}
+            onDetectionsChange={handleDetectionsChange}
+            onSelectSample={handleSampleSelect}
+        />
+    );
 
     return (
         <div className={`dashboard-root ${theme}-theme`}>
 
             <header className="top-full-header" style={{ flexShrink: 0, zIndex: 999 }}>
-                <Logo size="medium" showText={true} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {user?.is_admin && (
+                <div className="header-left-group">
+                    <button
+                        className="mobile-sidebar-toggle"
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        title="Toggle Navigation Menu"
+                        type="button"
+                    >
+                        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
+                    <Logo size="medium" showText={true} />
+                </div>
+
+                <div className="header-right-group">
+                    {!user?.is_admin && (
                         <button
-                            className={`header-nav-btn ${activeTab === 'Admin' ? 'active' : ''}`}
-                            onClick={() => setActiveTab(activeTab === 'Admin' ? 'Home' : 'Admin')}
+                            className={`theme-toggle-compact ${activeTab === 'Webcam' ? 'active' : ''}`}
+                            onClick={() => { setActiveTab('Webcam'); setWebcamPlaying(true); setWebcamError(null); }}
+                            title="Live Feed"
                         >
-                            {activeTab === 'Admin' ? (
-                                <><Activity size={18} /><span>{t("dashboard.nav.dashboard", "Dashboard")}</span></>
-                            ) : (
-                                <><ShieldAlert size={18} /><span>{t("dashboard.nav.adminConsole", "Admin Console")}</span></>
-                            )}
+                            <Camera size={18} />
                         </button>
                     )}
-                    <div className="header-divider"></div>
-                    <button
-                        className="theme-toggle-compact"
-                        onClick={() => { setActiveTab('Webcam'); setWebcamPlaying(true); setWebcamError(null); }}
-                        title="Live Scanner"
-                    >
-                        <Camera size={18} />
-                    </button>
                     <button
                         className="theme-toggle-compact"
                         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -718,13 +958,23 @@ const Dashboard: React.FC = () => {
                                     position: 'absolute',
                                     top: -2,
                                     right: -2,
-                                    width: 8,
-                                    height: 8,
+                                    minWidth: alerts.length > 9 ? 16 : 8,
+                                    height: alerts.length > 9 ? 16 : 8,
                                     background: '#ef4444',
                                     borderRadius: '50%',
                                     border: '1.5px solid var(--bg-card)',
-                                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.5)'
-                                }}></span>
+                                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.5)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.5rem',
+                                    fontWeight: 900,
+                                    color: '#fff',
+                                    lineHeight: 1,
+                                    padding: alerts.length > 9 ? '0 2px' : 0
+                                }}>
+                                    {alerts.length > 9 ? '9+' : alerts.length > 1 ? alerts.length : ''}
+                                </span>
                             )}
                         </button>
 
@@ -769,7 +1019,10 @@ const Dashboard: React.FC = () => {
                                                 padding: '10px',
                                                 borderRadius: '10px',
                                                 background: 'rgba(255,255,255,0.03)',
-                                                borderLeft: `3px solid ${alert.type === 'danger' ? '#ef4444' : '#f97316'}`,
+                                                borderLeft: `3px solid ${alert.type === 'danger' ? '#ef4444' :
+                                                        alert.type === 'success' ? '#10b981' :
+                                                            alert.type === 'info' ? '#3b82f6' : '#f97316'
+                                                    }`,
                                                 position: 'relative'
                                             }}>
                                                 <div style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: 2 }}>{alert.title}</div>
@@ -790,24 +1043,192 @@ const Dashboard: React.FC = () => {
                             </div>
                         )}
                     </div>
+
+                    <div className="header-user-profile">
+                        <input
+                            type="file"
+                            ref={avatarFileInputRef}
+                            onChange={handleAvatarUpload}
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            style={{ display: "none" }}
+                        />
+                        <div 
+                            className="header-avatar-wrap clickable"
+                            onClick={() => setShowProfileModal(true)}
+                            title="Click to edit profile icon & settings"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") setShowProfileModal(true);
+                            }}
+                        >
+                            <div className="header-avatar-circle">
+                                {userAvatar ? (
+                                    userAvatar.startsWith("data:image") ? (
+                                        <img src={userAvatar} alt="Profile" className="header-avatar-img" />
+                                    ) : (
+                                        <span className="header-avatar-preset-icon">{userAvatar}</span>
+                                    )
+                                ) : (
+                                    user?.name ? user.name.charAt(0).toUpperCase() : user?.email ? user.email.charAt(0).toUpperCase() : "U"
+                                )}
+                                <div className="header-avatar-hover-overlay" title="Edit Profile Icon">
+                                    <Camera size={12} />
+                                </div>
+                            </div>
+                            <span className="header-user-status" />
+                        </div>
+                        <div
+                            className="header-user-name-clickable"
+                            onClick={() => setShowProfileModal(true)}
+                            title="Click to edit profile or open settings"
+                        >
+                            <span className="header-user-name">
+                                {customName || user?.name || user?.email?.split('@')[0] || "User"}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </header>
 
+            {/* ── Profile & Avatar Editor Modal ── */}
+            {showProfileModal && (
+                <div className="profile-modal-backdrop" onClick={() => setShowProfileModal(false)}>
+                    <div className="profile-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="profile-modal-header">
+                            <div className="profile-modal-title-group">
+                                <h3 className="profile-modal-title">Edit Profile & Avatar</h3>
+                                <p className="profile-modal-subtitle">{user?.email || "Signed in user"}</p>
+                            </div>
+                            <button 
+                                className="profile-modal-close-btn"
+                                onClick={() => setShowProfileModal(false)}
+                                title="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="profile-modal-body">
+                            {/* Avatar Preview & Actions */}
+                            <div className="profile-modal-avatar-section">
+                                <div 
+                                    className="profile-modal-avatar-preview"
+                                    onClick={() => avatarFileInputRef.current?.click()}
+                                    title="Click to upload new image"
+                                >
+                                    {userAvatar ? (
+                                        userAvatar.startsWith("data:image") ? (
+                                            <img src={userAvatar} alt="Avatar Preview" className="profile-modal-avatar-img" />
+                                        ) : (
+                                            <span className="profile-modal-avatar-preset">{userAvatar}</span>
+                                        )
+                                    ) : (
+                                        <span className="profile-modal-avatar-initial">
+                                            {customName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
+                                        </span>
+                                    )}
+                                    <div className="profile-modal-avatar-badge">
+                                        <Camera size={14} />
+                                    </div>
+                                </div>
+
+                                <div className="profile-modal-avatar-cta-group">
+                                    <button 
+                                        type="button"
+                                        className="profile-modal-btn primary"
+                                        onClick={() => avatarFileInputRef.current?.click()}
+                                    >
+                                        <Upload size={14} />
+                                        <span>Upload Photo</span>
+                                    </button>
+                                    {userAvatar && (
+                                        <button 
+                                            type="button"
+                                            className="profile-modal-btn danger"
+                                            onClick={handleRemoveAvatar}
+                                        >
+                                            <Trash2 size={14} />
+                                            <span>Reset to Default</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Preset Avatar Gallery */}
+                            <div className="profile-modal-presets-section">
+                                <label className="profile-modal-section-label">Or Choose an Avatar Icon</label>
+                                <div className="profile-modal-presets-grid">
+                                    {PRESET_AVATARS.map((icon, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            className={`profile-preset-chip ${userAvatar === icon ? "active" : ""}`}
+                                            onClick={() => handleSelectPresetAvatar(icon)}
+                                            title={`Select ${icon}`}
+                                        >
+                                            {icon}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Display Name Edit */}
+                            <form className="profile-modal-name-section" onSubmit={handleSaveCustomName}>
+                                <label className="profile-modal-section-label">Display Name</label>
+                                <div className="profile-modal-name-row">
+                                    <input
+                                        type="text"
+                                        className="profile-modal-name-input"
+                                        value={editNameInput}
+                                        onChange={(e) => setEditNameInput(e.target.value)}
+                                        placeholder="Enter your name"
+                                        maxLength={40}
+                                    />
+                                    <button 
+                                        type="submit" 
+                                        className={`profile-modal-save-btn ${nameSavedFeedback ? "saved" : ""}`}
+                                    >
+                                        <Check size={14} />
+                                        <span>{nameSavedFeedback ? "Saved!" : "Save"}</span>
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="profile-modal-divider" />
+
+                            {/* Settings Shortcut */}
+                            <div className="profile-modal-footer">
+                                <button
+                                    type="button"
+                                    className="profile-modal-settings-link"
+                                    onClick={() => {
+                                        setActiveTab("Configuration");
+                                        setShowProfileModal(false);
+                                    }}
+                                >
+                                    <Settings size={16} />
+                                    <span>Open System Settings & AI Config</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="tab-container">
-                {activeTab !== "Admin" && (
-                    <Sidebar
-                        activeTab={activeTab}
-                        setActiveTab={setActiveTab}
-                        cameraActive={cameraActive}
-                        handleCameraToggle={handleCameraToggle}
-                        isOpen={sidebarOpen}
-                        toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                    />
-                )}
+                <Sidebar
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    cameraActive={cameraActive}
+                    handleCameraToggle={handleCameraToggle}
+                    isOpen={sidebarOpen}
+                    toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                />
 
                 <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div className="tab-content-wrapper">
-                        {activeTab === "Home" && (
+                        {activeTab === "Home" && user?.is_admin && (
                             <div className="animate-in dashboard-home">
                                 <div className="dashboard-header">
                                     <div>
@@ -822,7 +1243,12 @@ const Dashboard: React.FC = () => {
                                 <StatsGrid stats={stats} />
 
                                 <IntelligenceHub
-                                    detections={[...(result?.potholes ?? []), ...(result?.objects ?? [])]}
+                                    detections={[
+                                        ...(scannerResult?.potholes ?? []),
+                                        ...(scannerResult?.objects ?? []),
+                                        ...(webcamResult?.potholes ?? []),
+                                        ...(webcamResult?.objects ?? [])
+                                    ]}
                                     systemStats={{
                                         potholes: stats?.total_potholes || 0,
                                         cracks: stats?.total_detections || 0,
@@ -834,8 +1260,12 @@ const Dashboard: React.FC = () => {
                                 <div style={{ marginTop: 32 }}>
                                     <AnalyticsSection stats={stats} />
                                 </div>
+                            </div>
+                        )}
 
-
+                        {activeTab === "Scanner" && !user?.is_admin && (
+                            <div className="animate-in dashboard-home" style={{ padding: '24px' }}>
+                                {renderScannerComponent()}
                             </div>
                         )}
 
@@ -853,37 +1283,53 @@ const Dashboard: React.FC = () => {
                         )}
                         {activeTab === "History" && <DetectionLog />}
                         {activeTab === "Admin" && <AdminConsole />}
-                        {activeTab === "Report" && <ReportIssue onReturn={() => setActiveTab("Home")} />}
-                        {activeTab === "Configuration" && <AiConfig theme={theme} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} user={user} />}
+                        {activeTab === "Report" && !user?.is_admin && <ReportIssue onReturn={() => setActiveTab("Home")} />}
+                        {activeTab === "MyReports" && !user?.is_admin && <ReportIssue initialView="myreports" onReturn={() => setActiveTab("Home")} />}
+                        {activeTab === "Configuration" && (
+                            <AiConfig theme={theme} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} user={user} />
+                        )}
 
-                        {activeTab === "Webcam" && (
-                            <div className="animate-in dashboard-home" style={{ padding: '24px' }}>
-                                {/* ── Header ── */}
-                                <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', width: '100%' }}>
-                                    <div>
-                                        <h2 className="wcam-title"><Scan size={20} /> {t("dashboard.scanner.title", "AI Infrastructure Scanner")}</h2>
+                        {activeTab === "Webcam" && !user?.is_admin && (
+                            <div className="animate-in dashboard-home livefeed-page-root" style={{ padding: '24px' }}>
+                                {/* ── Header Bar ── */}
+                                <div className="livefeed-header-bar">
+                                    <div className="livefeed-header-left">
+                                        <div className={`livefeed-header-badge ${webcamPlaying ? "active" : ""}`}>
+                                            <Camera size={22} />
+                                        </div>
+                                        <div>
+                                            <h2 className="livefeed-title">
+                                                {t("dashboard.liveFeed.title", "AI Live Detection Feed")}
+                                                <span className={`livefeed-status-pill ${webcamPlaying ? "online" : "offline"}`}>
+                                                    <span className="livefeed-pulse-orb" />
+                                                    {webcamPlaying ? (ipCamActive ? "IP FEED ONLINE" : "ONLINE") : "OFFLINE"}
+                                                </span>
+                                            </h2>
+                                            <p className="livefeed-subtitle">
+                                                AI Powered Surface Monitoring
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="dashboard-actions" style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
+
+                                    <div className="livefeed-header-actions">
                                         {webcamPlaying && (
-                                            <button className="dash-action-btn medium" onClick={captureSnapshot} title="Save Snapshot">
-                                                <Download size={14} /><span>{t("dashboard.scanner.snapshotBtn", "Snapshot")}</span>
+                                            <button className="livefeed-btn-action" onClick={captureSnapshot} title="Save Snapshot">
+                                                <Download size={14} />
+                                                <span>{t("dashboard.liveFeed.snapshotBtn", "Snapshot")}</span>
                                             </button>
                                         )}
 
-
-
-                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'nowrap' }}>
+                                        <div className="livefeed-stream-input-wrap">
                                             <input
                                                 type="text"
                                                 value={cameraSource}
                                                 onChange={(e) => setCameraSource(e.target.value)}
-                                                placeholder="Server Link (URL)"
-                                                className="camera-input-small"
-                                                style={{ width: '180px', fontSize: '0.8125rem' }}
+                                                placeholder="IP Camera Stream URL (e.g. http://......"
+                                                className="livefeed-ip-input"
                                             />
 
                                             <button
-                                                className={`dash-action-btn medium ${webcamPlaying && ipCamActive ? 'active' : ''}`}
+                                                className={`livefeed-btn-stream ${webcamPlaying && ipCamActive ? 'active' : ''}`}
                                                 onClick={() => {
                                                     if (webcamPlaying && ipCamActive) {
                                                         setWebcamPlaying(false);
@@ -902,44 +1348,65 @@ const Dashboard: React.FC = () => {
                                                     }
                                                 }}
                                             >
-                                                <ShieldAlert size={18} />
-                                                <span>{webcamPlaying && ipCamActive ? "STOP URL SCANNER" : "START URL SCANNER"}</span>
+                                                <Radio size={14} />
+                                                <span>{webcamPlaying && ipCamActive ? "STOP IP" : "START IP"}</span>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* ── Poll Speed + Session Stats row ── */}
-                                <div className="wcam-toolbar">
-                                    <div className="wcam-poll-group">
-                                        <span className="wcam-toolbar-label">{t("dashboard.scanner.rate", "SCAN RATE:")}</span>
-                                        {([1000, 2000, 5000] as const).map(ms => (
-                                            <button
-                                                key={ms}
-                                                className={`wcam-poll-btn ${pollInterval === ms ? 'active' : ''}`}
-                                                onClick={() => setPollInterval(ms)}
-                                            >
-                                                {ms === 1000 ? t("dashboard.scanner.fast", "FAST") : ms === 2000 ? t("dashboard.scanner.normal", "NORMAL") : t("dashboard.scanner.slow", "SLOW")}
-                                            </button>
-                                        ))}
+                                {/* ── Telemetry & Frequency Toolbar ── */}
+                                <div className="livefeed-telemetry-bar">
+                                    <div className="livefeed-rate-group">
+                                        <span className="livefeed-bar-label">
+                                            <Zap size={12} /> {t("dashboard.scanner.rate", "SCAN RATE")}
+                                        </span>
+                                        <div className="livefeed-rate-pills">
+                                            {([1000, 2000, 5000] as const).map(ms => (
+                                                <button
+                                                    key={ms}
+                                                    className={`livefeed-rate-btn ${pollInterval === ms ? 'active' : ''}`}
+                                                    onClick={() => setPollInterval(ms)}
+                                                >
+                                                    {ms === 1000 ? "1.0s (FAST)" : ms === 2000 ? "2.0s (NORMAL)" : "5.0s (ECO)"}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="wcam-session-stats">
-                                        <div className="wcam-stat-chip" style={{ borderColor: '#f97316' }}>
-                                            <span className="wcam-stat-val" style={{ color: '#f97316' }}>{sessionStats.potholes}</span>
-                                            <span className="wcam-stat-lbl">{t("dashboard.stats.potholes", "Potholes")}</span>
+
+                                    <div className="livefeed-stat-chips">
+                                        <div className="livefeed-stat-chip chip-potholes">
+                                            <div className="livefeed-stat-icon-wrap">⚠️</div>
+                                            <div className="livefeed-stat-body">
+                                                <span className="livefeed-stat-val">{sessionStats.potholes}</span>
+                                                <span className="livefeed-stat-lbl">{t("dashboard.stats.potholes", "Potholes")}</span>
+                                            </div>
                                         </div>
-                                        <div className="wcam-stat-chip" style={{ borderColor: '#38bdf8' }}>
-                                            <span className="wcam-stat-val" style={{ color: '#38bdf8' }}>{sessionStats.vehicles}</span>
-                                            <span className="wcam-stat-lbl">{t("dashboard.stats.vehicles", "Vehicles")}</span>
+                                        <div className="livefeed-stat-chip chip-vehicles">
+                                            <div className="livefeed-stat-icon-wrap">🚗</div>
+                                            <div className="livefeed-stat-body">
+                                                <span className="livefeed-stat-val">{sessionStats.vehicles}</span>
+                                                <span className="livefeed-stat-lbl">{t("dashboard.stats.vehicles", "Vehicles")}</span>
+                                            </div>
                                         </div>
-                                        <div className="wcam-stat-chip" style={{ borderColor: '#a78bfa' }}>
-                                            <span className="wcam-stat-val" style={{ color: '#a78bfa' }}>{sessionStats.people}</span>
-                                            <span className="wcam-stat-lbl">{t("dashboard.stats.people", "People")}</span>
+                                        <div className="livefeed-stat-chip chip-people">
+                                            <div className="livefeed-stat-icon-wrap">👤</div>
+                                            <div className="livefeed-stat-body">
+                                                <span className="livefeed-stat-val">{sessionStats.people}</span>
+                                                <span className="livefeed-stat-lbl">{t("dashboard.stats.people", "People")}</span>
+                                            </div>
+                                        </div>
+                                        <div className="livefeed-stat-chip chip-total">
+                                            <div className="livefeed-stat-icon-wrap">🎯</div>
+                                            <div className="livefeed-stat-body">
+                                                <span className="livefeed-stat-val">{detectionHistory.length}</span>
+                                                <span className="livefeed-stat-lbl">Active Targets</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* ── Camera error card ── */}
+                                {/* ── Camera error alert ── */}
                                 {webcamError && (
                                     <div className="wcam-error-card">
                                         <WifiOff size={20} />
@@ -947,24 +1414,28 @@ const Dashboard: React.FC = () => {
                                             <p className="wcam-error-title">{t("dashboard.camera.unavailable", "Camera Unavailable")}</p>
                                             <p className="wcam-error-desc">{webcamError}</p>
                                         </div>
-                                        <button className="wcam-error-close" onClick={() => setWebcamError(null)}><X size={14} /></button>
+                                        <button className="wcam-error-close" onClick={() => setWebcamError(null)} title="Dismiss">
+                                            <X size={14} />
+                                        </button>
                                     </div>
                                 )}
 
-                                {/* ── Camera viewport ── */}
+                                {/* ── Cyber Viewport Frame ── */}
                                 <div
                                     ref={webcamContainerRef}
-                                    className="webcam-hud-container"
-                                    style={{ position: 'relative', minHeight: '340px' }}
+                                    className="webcam-hud-container livefeed-viewport-container"
+                                    style={{ position: 'relative', minHeight: '380px' }}
                                 >
-                                    {/* Fullscreen button — top-right corner of viewport */}
+                                    {/* Fullscreen button */}
                                     <button
                                         className="wcam-fullscreen-btn"
                                         onClick={toggleFullscreen}
-                                        title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                                        title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen View'}
                                     >
-                                        {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                                        {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
                                     </button>
+
+                                    {/* Video / IP element */}
                                     <video
                                         ref={videoRef}
                                         autoPlay
@@ -997,74 +1468,129 @@ const Dashboard: React.FC = () => {
                                             }}
                                         />
                                     )}
+
+                                    {/* Real-time Detection Overlay Canvas */}
                                     <canvas
                                         ref={webcamCanvasRef}
                                         className="webcam-overlay-canvas"
                                         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
                                     />
 
+                                    {/* Active HUD Cockpit Overlay */}
                                     {webcamPlaying && (
-                                        <div className="webcam-hud-overlay-pro">
-                                            {/* Corner brackets */}
+                                        <div className="webcam-hud-overlay-pro livefeed-hud-overlay">
+                                            {/* Tactical Reticle in Center */}
+                                            <div className="livefeed-reticle">
+                                                <div className="livefeed-reticle-ring" />
+                                                <div className="livefeed-reticle-cross-h" />
+                                                <div className="livefeed-reticle-cross-v" />
+                                            </div>
+
+                                            {/* Digital Scan Laser Line */}
+                                            <div className="livefeed-scan-laser" />
+
+                                            {/* Sci-Fi Corner Brackets */}
                                             <div className="hud-corner hud-corner-tl" />
                                             <div className="hud-corner hud-corner-tr" />
                                             <div className="hud-corner hud-corner-bl" />
                                             <div className="hud-corner hud-corner-br" />
 
+                                            {/* Top HUD Edge Bar */}
                                             <div className="hud-edge-bar">
                                                 <div className="hud-chip-group">
                                                     <div className="hud-micro-chip status-live">
-                                                        <span className="status-dot active" /> LIVE
+                                                        <span className="status-dot active" /> REC &bull; LIVE
                                                     </div>
-                                                    <div className="hud-micro-chip glow-data"><Radio size={11} /> {webcamTime}</div>
-                                                    <div className="hud-micro-chip glow-data"><Zap size={11} /> {frameCount} FPS</div>
+                                                    <div className="hud-micro-chip glow-data">
+                                                        <Radio size={11} /> {webcamTime}
+                                                    </div>
+                                                    <div className="hud-micro-chip glow-data">
+                                                        <Zap size={11} /> {frameCount} FPS
+                                                    </div>
                                                     <div className="hud-micro-chip hud-health-chip">
                                                         <Activity size={11} /> Infra Health: {stats ? stats.road_health_score : 100}%
                                                     </div>
                                                 </div>
+
+                                                {/* Visual Mode Selector Capsule */}
                                                 <div className="hud-mode-selector-strip">
                                                     {(['Normal', 'Thermal', 'Infrared', 'Neural'] as const).map(m => (
-                                                        <button key={m} className={`mode-btn-small ${visualMode === m ? 'active' : ''}`} onClick={() => setVisualMode(m)}>{m}</button>
+                                                        <button
+                                                            key={m}
+                                                            className={`mode-btn-small ${visualMode === m ? 'active' : ''}`}
+                                                            onClick={() => setVisualMode(m)}
+                                                        >
+                                                            {m}
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
+
+                                            {/* Bottom HUD Edge Bar */}
                                             <div className="hud-edge-bar" style={{ marginTop: 'auto' }}>
                                                 <div className="hud-intelligence-line">
-                                                    <span className="hud-intel-box"><Eye size={11} /> MODE: {visualMode.toUpperCase()}</span>
-                                                    <span className="hud-intel-box"><Crosshair size={11} /> TARGETS: {detectionHistory.length}</span>
-                                                    {/* <span className="hud-intel-box brand">AI SMART-INFRA</span> */}
+                                                    <span className="hud-intel-box">
+                                                        <Eye size={11} /> MODE: {visualMode.toUpperCase()}
+                                                    </span>
+                                                    <span className="hud-intel-box">
+                                                        <Crosshair size={11} /> TARGETS: {detectionHistory.length}
+                                                    </span>
                                                 </div>
                                                 <div className="hud-action-strip">
-                                                    <button className="hud-action-btn-pro" onClick={captureSnapshot}><Download size={12} /> {t("dashboard.camera.snapshot", "SNAPSHOT")}</button>
-                                                    <button className="hud-action-btn-pro danger" onClick={() => setWebcamPlaying(false)}><X size={12} /> {t("dashboard.camera.endScan", "END SCAN")}</button>
+                                                    <button className="hud-action-btn-pro" onClick={captureSnapshot}>
+                                                        <Download size={12} /> {t("dashboard.camera.snapshot", "SNAPSHOT")}
+                                                    </button>
+                                                    <button className="hud-action-btn-pro danger" onClick={() => setWebcamPlaying(false)}>
+                                                        <X size={12} /> {t("dashboard.camera.endScan", "END SCAN")}
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
                                     )}
 
+                                    {/* Standby Radar Display */}
                                     {!webcamPlaying && (
-                                        <div className="premium-standby-overlay">
+                                        <div className="premium-standby-overlay livefeed-standby-screen">
+                                            <div className="livefeed-standby-radar">
+                                                <div className="radar-circle radar-c1" />
+                                                <div className="radar-circle radar-c2" />
+                                                <div className="radar-circle radar-c3" />
+                                                <div className="radar-sweep-arm" />
+                                                <div className="radar-center-orb">
+                                                    <Camera size={28} />
+                                                </div>
+                                            </div>
+
                                             <div className="standby-content">
-                                                <div className="pulse-ring"><Camera size={32} /></div>
-                                                <p className="standby-status">{t("dashboard.camera.offline", "CAMERA LINK OFFLINE")}</p>
-                                                <p className="standby-desc">{t("dashboard.camera.offlineDesc", "Click a scanner to start the live feed")}</p>
-                                                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
-                                                    <button className="dash-action-btn medium" style={{ pointerEvents: 'auto' }} onClick={() => {
-                                                        setCameraSource("");
-                                                        setWebcamPlaying(true);
-                                                        clearDetectionHistory();
-                                                    }}>
-                                                        <Camera size={16} /> {t("dashboard.camera.activateWebcam", "Activate Web Camera")}
+                                                <p className="standby-status">{t("dashboard.camera.offline", "Live Detection Sensor")}</p>
+                                                <p className="standby-desc">
+                                                    {t("dashboard.camera.offlineDesc", "Select a live capture source to stream.")}
+                                                </p>
+                                                <div className="livefeed-standby-actions">
+                                                    <button
+                                                        className="livefeed-standby-btn primary"
+                                                        onClick={() => {
+                                                            setCameraSource("");
+                                                            setWebcamPlaying(true);
+                                                            clearDetectionHistory();
+                                                        }}
+                                                    >
+                                                        <Camera size={16} />
+                                                        <span>{t("dashboard.camera.activateWebcam", "Activate Web Camera")}</span>
                                                     </button>
-                                                    <button className="dash-action-btn medium" style={{ pointerEvents: 'auto' }} onClick={() => {
-                                                        if (!cameraSource.trim()) {
-                                                            alert("Please provide the server link in the input box above.");
-                                                            return;
-                                                        }
-                                                        setWebcamPlaying(true);
-                                                        clearDetectionHistory();
-                                                    }}>
-                                                        <ShieldAlert size={16} /> {t("dashboard.camera.activateUrl", "Activate URL Scanner")}
+                                                    <button
+                                                        className="livefeed-standby-btn secondary"
+                                                        onClick={() => {
+                                                            if (!cameraSource.trim()) {
+                                                                alert("Please provide the IP stream URL in the input box above.");
+                                                                return;
+                                                            }
+                                                            setWebcamPlaying(true);
+                                                            clearDetectionHistory();
+                                                        }}
+                                                    >
+                                                        <Radio size={16} />
+                                                        <span>{t("dashboard.camera.activateUrl", "Activate IP Camera Feed")}</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -1072,19 +1598,29 @@ const Dashboard: React.FC = () => {
                                     )}
                                 </div>
 
-                                {/* ── Detection History Panel ── */}
+                                {/* ── Live Detection History Panel ── */}
                                 {detectionHistory.length > 0 && (
-                                    <div style={{ marginTop: '20px', padding: '20px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                                            <Database size={12} color="var(--text-muted)" /> {t("dashboard.log.title", "Live Detection Log")}
-                                            <span style={{ marginLeft: 'auto', background: 'var(--primary)', color: '#fff', borderRadius: '99px', padding: '1px 8px', fontSize: '0.7rem' }}>
-                                                {detectionHistory.length}
-                                            </span>
-                                            <button onClick={clearDetectionHistory} title={t("dashboard.log.clearTitle", "Clear log")} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem' }}>
-                                                <Trash2 size={11} /> {t("dashboard.log.clear", "Clear")}
+                                    <div className="livefeed-detection-panel">
+                                        <div className="livefeed-panel-header">
+                                            <div className="livefeed-panel-title">
+                                                <Database size={14} />
+                                                <span>{t("dashboard.log.title", "Live Detection Telemetry")}</span>
+                                                <span className="livefeed-panel-badge">
+                                                    {detectionHistory.length}
+                                                </span>
+                                            </div>
+
+                                            <button
+                                                onClick={clearDetectionHistory}
+                                                title={t("dashboard.log.clearTitle", "Clear log")}
+                                                className="livefeed-panel-clear-btn"
+                                            >
+                                                <Trash2 size={12} />
+                                                <span>{t("dashboard.log.clear", "Clear Log")}</span>
                                             </button>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
+
+                                        <div className="livefeed-cards-grid">
                                             {detectionHistory.map((d, i) => {
                                                 const color = CLASS_BOX_COLORS.get(d.class) || '#f97316';
                                                 const isHigh = d.confidence >= 0.7;
@@ -1096,121 +1632,51 @@ const Dashboard: React.FC = () => {
                                                 return (
                                                     <div
                                                         key={i}
-                                                        style={{
-                                                            padding: '14px',
-                                                            borderLeft: `4px solid ${color}`,
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            gap: '8px',
-                                                            background: 'var(--bg-surface)',
-                                                            border: '1px solid var(--border)',
-                                                            borderRadius: '12px',
-                                                            boxShadow: 'var(--shadow-sm)',
-                                                            position: 'relative',
-                                                            overflow: 'hidden'
-                                                        }}
+                                                        className="livefeed-detection-card"
+                                                        style={{ borderLeftColor: color }}
                                                     >
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                            <span style={{
-                                                                fontSize: '0.72rem',
-                                                                color: 'var(--text-main)',
-                                                                fontWeight: 800,
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.04em',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '5px'
-                                                            }}>
-                                                                {icon} {d.class}
+                                                        <div className="livefeed-card-header">
+                                                            <span className="livefeed-card-class">
+                                                                <span className="livefeed-class-emoji">{icon}</span>
+                                                                {d.class}
                                                             </span>
-                                                            <span style={{
-                                                                fontSize: '0.62rem',
-                                                                fontWeight: 800,
-                                                                color: statusColor,
-                                                                background: `${statusColor}15`,
-                                                                padding: '1px 6px',
-                                                                borderRadius: '4px',
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.03em'
-                                                            }}>
+                                                            <span
+                                                                className="livefeed-card-pill"
+                                                                style={{
+                                                                    color: statusColor,
+                                                                    backgroundColor: `${statusColor}18`,
+                                                                    borderColor: `${statusColor}33`
+                                                                }}
+                                                            >
                                                                 {confidenceStatus}
                                                             </span>
                                                         </div>
 
-                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-                                                            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                                                                {Math.round(d.confidence * 100)}%
-                                                            </span>
-                                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t("dashboard.log.confidence", "confidence")}</span>
-                                                        </div>
+                                                        <div className="livefeed-card-body">
+                                                            <div className="livefeed-card-score-row">
+                                                                <span className="livefeed-card-pct">
+                                                                    {Math.round(d.confidence * 100)}%
+                                                                </span>
+                                                                <span className="livefeed-card-conf-label">
+                                                                    {t("dashboard.log.confidence", "confidence")}
+                                                                </span>
+                                                            </div>
 
-                                                        <div style={{ height: '4px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden', marginTop: '2px' }}>
-                                                            <div
-                                                                style={{
-                                                                    height: '100%',
-                                                                    width: `${d.confidence * 100}%`,
-                                                                    background: color,
-                                                                    borderRadius: '4px',
-                                                                    boxShadow: `0 0 6px ${color}80`,
-                                                                    transition: 'width 0.4s'
-                                                                }}
-                                                            />
+                                                            <div className="livefeed-card-meter">
+                                                                <div
+                                                                    className="livefeed-card-meter-fill"
+                                                                    style={{
+                                                                        width: `${d.confidence * 100}%`,
+                                                                        backgroundColor: color,
+                                                                        boxShadow: `0 0 8px ${color}80`
+                                                                    }}
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                    </div>
-                                )}
-
-                                {!webcamPlaying && (
-                                    <div style={{ marginTop: 32 }}>
-                                        <AiScanner
-                                            result={result}
-                                        loading={loading}
-                                        scannerStatus={scannerStatus}
-                                        isDragging={isDragging}
-                                        preview={preview}
-                                        fileInputRef={fileInputRef}
-                                        imageRef={imageRef}
-                                        canvasRef={canvasRef}
-                                        onFileChange={onFileChange}
-                                        handleDragOver={(e: any) => { e.preventDefault(); setIsDragging(true); }}
-                                        handleDragLeave={() => setIsDragging(false)}
-                                        handleDrop={(e: any) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
-                                        drawDetections={drawDetections}
-                                        resetScanner={() => { setFile(null); setPreview(null); setResult(null); }}
-                                        onDetectionsChange={(newDetections: any[]) => {
-                                            // Handle new detections if needed
-                                            if (newDetections.length > 0) {
-                                                const newAlerts = newDetections.map((d: any) => ({
-                                                    id: Date.now() + Math.random(),
-                                                    type: d.pothole_present ? 'pothole' : 'structural',
-                                                    severity: d.pothole_present ? 'high' : 'medium',
-                                                    message: d.pothole_present ? `Pothole detected in Sector ${Math.floor(Math.random() * 10) + 1}` : `Structural anomaly detected`,
-                                                    timestamp: new Date().toISOString(),
-                                                    location: 'Sector ' + (Math.floor(Math.random() * 10) + 1),
-                                                    status: 'pending'
-                                                }));
-                                                setAlerts(prev => {
-                                                    const now = Date.now();
-                                                    const filteredNewAlerts = newAlerts.filter((newA: any) => {
-                                                        // Prevent duplicate notifications of the same type and message within 10 seconds
-                                                        const isDuplicate = prev.some(p =>
-                                                            p.type === newA.type &&
-                                                            p.message === newA.message &&
-                                                            (now - new Date(p.timestamp).getTime() < 10000)
-                                                        );
-                                                        return !isDuplicate;
-                                                    });
-
-                                                    if (filteredNewAlerts.length === 0) return prev;
-                                                    // Add new alerts and keep maximum of 20 in the history
-                                                    return [...filteredNewAlerts, ...prev].slice(0, 20);
-                                                });
-                                            }
-                                        }}
-                                    />
                                     </div>
                                 )}
                             </div>

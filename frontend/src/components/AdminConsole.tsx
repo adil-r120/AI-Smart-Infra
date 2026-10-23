@@ -5,6 +5,7 @@ import { API_BASE } from "../api/config";
 import { useAuth } from "../context/AuthContext";
 import { CheckCircle, Trash2, Eye, EyeOff, MapPin, Calendar, Info, Search, Download, RefreshCw, BarChart3, TrendingUp, AlertTriangle, CheckSquare, Database, Camera, Users, Briefcase, Sparkles, Shield, Bell, X } from "lucide-react";
 import UrbanAdvisorModal from "./UrbanAdvisorModal";
+import "./AdminConsole.css";
 
 const getImageUrl = (path: string | null | undefined) => {
     if (!path) return '';
@@ -48,8 +49,12 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [resolveModal, setResolveModal] = useState<{ reportId: number | 'bulk' } | null>(null);
     const [resolveNote, setResolveNote] = useState("");
+    const [assignWorkerModal, setAssignWorkerModal] = useState<Report | null>(null);
+    const [workerName, setWorkerName] = useState("");
+    const [workerNotes, setWorkerNotes] = useState("");
+    const [workerPriority, setWorkerPriority] = useState("Medium");
+    const [isAssigning, setIsAssigning] = useState(false);
     const [isBriefingOpen, setIsBriefingOpen] = useState(false);
-    const [inviteTokenModal, setInviteTokenModal] = useState<{ token: string; expiresAt: string } | null>(null);
 
     const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
         const id = Date.now() + Math.random();
@@ -264,6 +269,44 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
         }
     };
 
+    const handleAssignWorkerSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!assignWorkerModal || !workerName.trim()) return;
+
+        setIsAssigning(true);
+        try {
+            const formData = new FormData();
+            formData.append("worker_name", workerName.trim());
+            if (workerNotes.trim()) formData.append("notes", workerNotes.trim());
+            if (workerPriority) formData.append("priority", workerPriority);
+
+            await axios.post(`${API_BASE}/reports/${assignWorkerModal.id}/assign`, formData, {
+                headers: authHeaders
+            });
+
+            showToast(`Worker "${workerName.trim()}" dispatched to ${assignWorkerModal.location}!`, 'success');
+            setAssignWorkerModal(null);
+            setWorkerName("");
+            setWorkerNotes("");
+            fetchReports();
+            if (selectedReport && selectedReport.id === assignWorkerModal.id) {
+                setSelectedReport({
+                    ...selectedReport,
+                    status: "Approved",
+                    assigned_worker: workerName.trim(),
+                    worker_notes: workerNotes.trim(),
+                    priority_level: workerPriority,
+                    assigned_at: new Date().toISOString()
+                });
+            }
+        } catch (err: any) {
+            console.error("Error assigning worker:", err);
+            showToast("Failed to assign worker. Please try again.", "error");
+        } finally {
+            setIsAssigning(false);
+        }
+    };
+
     const handleDelete = async (id: number) => {
         if (!window.confirm("Are you sure you want to delete this report? This action cannot be undone.")) return;
         try {
@@ -381,16 +424,6 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
         }
     };
 
-    const handleGenerateAdminInvite = async () => {
-        try {
-            const res = await axios.post(`${API_BASE}/admin/invite-tokens`, null, { headers: authHeaders });
-            setInviteTokenModal({ token: res.data.token, expiresAt: res.data.expires_at });
-            showToast("One-time admin invite token generated", "success");
-        } catch {
-            showToast("Failed to generate admin invite token", "error");
-        }
-    };
-
     return (
         <div className="admin-page animate-in">
             {authLoading ? (
@@ -418,159 +451,140 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
                 </div>
             ) : (
                 <>
-            <div className="section-header">
+            {/* Executive Command Center Header */}
+            <div className="admin-command-header">
                 <div>
-                    <h2 className="section-title">Infrastructure Management Console</h2>
-                    <p className="section-subtitle">Review and manage infrastructure issues reported by citizens.</p>
+                    <h2 className="admin-command-title">Infrastructure Management Console</h2>
+                    <p className="admin-command-subtitle">Real-time municipal oversight, automated edge telemetry, field crew dispatching, and audit workflows.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                        type="button"
-                        className="dash-action-btn"
-                        onClick={handleGenerateAdminInvite}
-                        style={{ background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)', color: 'white', border: 'none' }}
+                <div className="admin-header-actions">
+                    <button 
+                        type="button" 
+                        className="admin-action-btn-ai" 
+                        onClick={() => setIsBriefingOpen(true)}
                     >
-                        <Shield size={16} />
-                        <span>Generate Admin Invite</span>
+                        <Sparkles size={16} />
+                        <span>Generate AI Opinion</span>
                     </button>
                     <button 
                         type="button" 
-                        className="dash-action-btn" 
-                        onClick={() => setIsBriefingOpen(true)}
-                        style={{ background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)', color: 'white', border: 'none' }}
+                        className="admin-action-btn-refresh" 
+                        onClick={fetchAdminData} 
+                        disabled={loading} 
+                        title="Refresh live data"
                     >
-                        <Sparkles size={16} />
-                        <span>Generate AI Briefing</span>
-                    </button>
-                    <button type="button" className="dash-action-btn" onClick={fetchAdminData} disabled={loading} title="Refresh data">
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         <span>Refresh</span>
                     </button>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="stats-grid">
-                <div className={`stat-card stat-total ${activeTab === 'issues' ? 'active-filter' : ''}`} onClick={() => setActiveTab('issues')}>
-                    <div className="stat-icon"><BarChart3 size={24} /></div>
-                    <div className="stat-content">
-                        <div className="stat-value">{stats.total}</div>
-                        <div className="stat-label">Infrastructure Reports</div>
+            {/* Interactive Metrics Grid */}
+            <div className="admin-stats-grid">
+                <div 
+                    className={`admin-stat-card stat-reports ${activeTab === 'issues' ? 'active-tab-filter' : ''}`} 
+                    onClick={() => setActiveTab('issues')}
+                >
+                    <div className="admin-stat-icon-wrap"><BarChart3 size={22} /></div>
+                    <div className="admin-stat-data">
+                        <div className="admin-stat-number">{stats.total}</div>
+                        <div className="admin-stat-title">Reports</div>
                     </div>
                 </div>
-                <div className={`stat-card stat-pending ${activeTab === 'work-orders' ? 'active-filter' : ''}`} onClick={() => setActiveTab('work-orders')}>
-                    <div className="stat-icon"><CheckSquare size={24} /></div>
-                    <div className="stat-content">
-                        <div className="stat-value">{stats.work_orders_count}</div>
-                        <div className="stat-label">Work Orders</div>
+                <div 
+                    className={`admin-stat-card stat-workorders ${activeTab === 'work-orders' ? 'active-tab-filter' : ''}`} 
+                    onClick={() => setActiveTab('work-orders')}
+                >
+                    <div className="admin-stat-icon-wrap"><CheckSquare size={22} /></div>
+                    <div className="admin-stat-data">
+                        <div className="admin-stat-number">{stats.work_orders_count}</div>
+                        <div className="admin-stat-title">Work Orders</div>
                     </div>
                 </div>
-                <div className={`stat-card stat-resolved ${activeTab === 'personnel' ? 'active-filter' : ''}`} onClick={() => setActiveTab('personnel')}>
-                    <div className="stat-icon"><Users size={24} /></div>
-                    <div className="stat-content">
-                        <div className="stat-value">{stats.users_count}</div>
-                        <div className="stat-label">Staff Personnel</div>
+                <div 
+                    className={`admin-stat-card stat-personnel ${activeTab === 'personnel' ? 'active-tab-filter' : ''}`} 
+                    onClick={() => setActiveTab('personnel')}
+                >
+                    <div className="admin-stat-icon-wrap"><Users size={22} /></div>
+                    <div className="admin-stat-data">
+                        <div className="admin-stat-number">{stats.users_count}</div>
+                        <div className="admin-stat-title">Personnel</div>
                     </div>
                 </div>
-                <div className="stat-card stat-today">
-                    <div className="stat-icon"><TrendingUp size={24} /></div>
-                    <div className="stat-content">
-                        <div className="stat-value">{stats.detections_count}</div>
-                        <div className="stat-label">AI Detections</div>
+                    
+                <div 
+                    className={`admin-stat-card stat-audit ${activeTab === 'audit-logs' ? 'active-tab-filter' : ''}`} 
+                    onClick={() => setActiveTab('audit-logs')}
+                >
+                    <div className="admin-stat-icon-wrap"><Shield size={22} /></div>
+                    <div className="admin-stat-data">
+                        <div className="admin-stat-number">{auditLogs.length}</div>
+                        <div className="admin-stat-title">Audit Logs</div>
                     </div>
                 </div>
-                <div className={`stat-card stat-total ${activeTab === 'audit-logs' ? 'active-filter' : ''}`} onClick={() => setActiveTab('audit-logs')}>
-                    <div className="stat-icon"><Shield size={24} /></div>
-                    <div className="stat-content">
-                        <div className="stat-value">{auditLogs.length}</div>
-                        <div className="stat-label">Audit Logs</div>
-                    </div>
-                </div>
-                <div className={`stat-card stat-pending ${activeTab === 'alerts' ? 'active-filter' : ''}`} onClick={() => setActiveTab('alerts')}>
-                    <div className="stat-icon"><Bell size={24} /></div>
-                    <div className="stat-content">
-                        <div className="stat-value">{alerts.length}</div>
-                        <div className="stat-label">System Alerts</div>
+                <div 
+                    className={`admin-stat-card stat-alerts ${activeTab === 'alerts' ? 'active-tab-filter' : ''}`} 
+                    onClick={() => setActiveTab('alerts')}
+                >
+                    <div className="admin-stat-icon-wrap"><Bell size={22} /></div>
+                    <div className="admin-stat-data">
+                        <div className="admin-stat-number">{alerts.length}</div>
+                        <div className="admin-stat-title">Alerts</div>
                     </div>
                 </div>
             </div>
 
-            {/* Filters & Actions Bar */}
-            <div className="admin-toolbar">
-                <div className="toolbar-left">
-                    <div className="search-box">
-                        <Search size={18} className="search-icon" />
-                        <input
-                            type="text"
-                            placeholder="Search reports..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-
-                    <select
-                        className="admin-select"
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                    >
-                        <option value="all">All Types</option>
-                        {Object.keys(ISSUE_LABELS).map(key => (
-                            <option key={key} value={key}>{ISSUE_LABELS[key]}</option>
-                        ))}
-                    </select>
-
-                    <button
-                        className="btn btn-ghost sort-btn"
-                        onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
-                        title="Sort by Date"
-                    >
-                        <TrendingUp size={16} style={{ transform: sortOrder === 'newest' ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
-                    </button>
-                </div>
-
-                <div className="toolbar-right">
-                    <div className="status-tabs">
-                        {["all", "pending", "resolved"].map(status => (
-                            <button
-                                key={status}
-                                className={`status-tab ${statusFilter === status ? 'active' : ''}`}
-                                onClick={() => setStatusFilter(status)}
-                            >
-                                {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
-                            </button>
-                        ))}
-                    </div>
-
-                    {selectedReports.length > 0 && (
-                        <div className="bulk-actions">
-                            <span className="selected-count">{selectedReports.length} selected</span>
-                            <select
-                                value={bulkAction}
-                                onChange={(e) => setBulkAction(e.target.value as any)}
-                                className="bulk-select"
-                            >
-                                <option value="none">Bulk Action</option>
-                                <option value="resolve">Mark Resolved</option>
-                                <option value="delete">Delete</option>
-                            </select>
-                            <button
-                                className="btn btn-primary btn-sm"
-                                onClick={handleBulkAction}
-                                disabled={bulkAction === "none"}
-                            >
-                                Apply
-                            </button>
-                        </div>
-                    )}
-
-                    <button className="btn btn-ghost action-badge export-btn" onClick={handleExport} title="Export to CSV">
-                        <Download size={15} />
-                        <span>EXPORT REPORTS</span>
-                    </button>
-                </div>
+            {/* Segmented Navigation Strip */}
+            <div className="admin-nav-strip">
+                <button 
+                    type="button" 
+                    className={`admin-nav-pill ${activeTab === 'issues' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('issues')}
+                >
+                    <BarChart3 size={15} />
+                    <span>Infrastructure Reports</span>
+                    <span className="admin-nav-count">{stats.total}</span>
+                </button>
+                <button 
+                    type="button" 
+                    className={`admin-nav-pill ${activeTab === 'work-orders' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('work-orders')}
+                >
+                    <CheckSquare size={15} />
+                    <span>Work Orders</span>
+                    <span className="admin-nav-count">{stats.work_orders_count}</span>
+                </button>
+                <button 
+                    type="button" 
+                    className={`admin-nav-pill ${activeTab === 'personnel' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('personnel')}
+                >
+                    <Users size={15} />
+                    <span>Personnel & Staff</span>
+                    <span className="admin-nav-count">{stats.users_count}</span>
+                </button>
+                <button 
+                    type="button" 
+                    className={`admin-nav-pill ${activeTab === 'audit-logs' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('audit-logs')}
+                >
+                    <Shield size={15} />
+                    <span>Security Audit Logs</span>
+                    <span className="admin-nav-count">{auditLogs.length}</span>
+                </button>
+                <button 
+                    type="button" 
+                    className={`admin-nav-pill ${activeTab === 'alerts' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('alerts')}
+                >
+                    <Bell size={15} />
+                    <span>System Alerts</span>
+                    <span className="admin-nav-count">{alerts.length}</span>
+                </button>
             </div>
 
-            <div className="urban-health-hero glass-card">
+            {/* Urban Health Hero Banner */}
+            <div className="urban-health-hero">
                 <div className="health-left">
                     <div className="health-score-ring">
                         <svg viewBox="0 0 36 36" className="circular-chart">
@@ -580,351 +594,753 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
                         </svg>
                     </div>
                     <div className="health-text">
-                        <h3 className="section-title" style={{ fontSize: '1.4rem', marginBottom: 0 }}>URBAN HEALTH INDEX</h3>
-                        <p className="section-subtitle">Real-time infrastructure compliance & safety metric.</p>
+                        <h3>HEALTH INDEX</h3>
+                        <p>Real-time infrastructure compliance & safety metric across municipal zones.</p>
                     </div>
                 </div>
                 <div className="health-right">
-                    <div className="trend-badge positive">
+                    <div className="trend-badge">
                         <TrendingUp size={14} /> +4.2% VS PEER DISTRICTS
                     </div>
                     <div className="edge-metrics-hud">
-                        <span className="hud-tag">EDGE-AI SAVINGS: <b>421.2 MB</b></span>
+                        {/* <span className="hud-tag">EDGE-AI SAVINGS: <b>421.2 MB</b></span> */}
                         <span className="hud-tag">PRIVACY PASS: <b>100%</b></span>
                     </div>
                 </div>
             </div>
 
-            <div className="admin-grid">
-                <div className="reports-table-container">
-                    {loading ? (
-                        <div className="loading-state container-placeholder">
-                            <RefreshCw className="animate-spin" size={32} />
-                            <p>Synchronizing infrastructure nodes...</p>
+            {/* Toolbar for Reports */}
+            {activeTab === 'issues' && (
+                <div className="admin-toolbar-card">
+                    <div className="toolbar-controls-left">
+                        <div className="admin-search-wrapper">
+                            <Search size={16} className="admin-search-icon" />
+                            <input
+                                type="text"
+                                className="admin-search-input"
+                                placeholder="Search by ID, location, worker, description..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
-                    ) : activeTab === 'issues' ? (
-                        filteredReports.length === 0 ? (
-                            <div className="empty-state container-placeholder">
-                                <Database size={40} strokeWidth={1.5} />
-                                <h3>No Reports Found</h3>
-                                <p>Try adjusting your search or filters.</p>
-                            </div>
-                        ) : (
-                            <table className="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: '40px' }}><input type="checkbox" checked={selectedReports.length === filteredReports.length} onChange={toggleSelectAll} className="select-all-checkbox" /></th>
-                                        <th style={{ width: '60px' }}>ID</th>
-                                        <th style={{ width: '50px' }}>Asset</th>
-                                        <th>Issue Type</th>
-                                        <th>Location</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th style={{ width: '120px' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {paginatedReports.map((report) => (
-                                        <tr key={report.id} className={selectedReport?.id === report.id ? 'selected' : ''}>
-                                            <td><input type="checkbox" checked={selectedReports.includes(report.id)} onChange={() => toggleSelectReport(report.id)} className="row-checkbox" /></td>
-                                            <td><span className="report-id">#{report.id}</span></td>
-                                            <td>
-                                                <div className="table-thumbnail-wrapper">
-                                                    {report.image_path ? <img src={getImageUrl(report.image_path)} alt="thumb" /> : <Camera size={14} opacity={0.3} style={{ margin: 'auto' }} />}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                    <span className={`issue-badge issue-${(report.problem_type || 'other').toLowerCase().replace(/\s+/g, '-')}`}>
-                                                        {report.problem_type || 'Unknown'}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td><div className="flex-center gap-1" style={{ justifyContent: 'flex-start' }}><MapPin size={12} /> <span className="mono-text">{report.location}</span></div></td>
-                                            <td><span className="timestamp-text">{new Date(report.timestamp).toLocaleDateString()}</span></td>
-                                            <td><span className={`status-pill ${report.status.toLowerCase()}`}>{report.status}</span></td>
-                                            <td>
-                                                <div className="action-buttons">
-                                                    <button className="btn-icon" onClick={() => setSelectedReport(selectedReport?.id === report.id ? null : report)}><Eye size={13} /></button>
-                                                    <button className="btn-icon success" onClick={() => handleResolveClick(report.id)} disabled={report.status === "Resolved"}><CheckCircle size={13} /></button>
-                                                    <button className="btn-icon danger" onClick={() => handleDelete(report.id)}><Trash2 size={13} /></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )
-                    ) : activeTab === 'personnel' ? (
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>ID</th>
-                                    <th>Personnel Name</th>
-                                    <th>Secure Email</th>
-                                    <th>Access Granted</th>
-                                    <th>Role Classification</th>
-                                    <th style={{ width: '100px' }}>Controls</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map(u => (
-                                    <tr key={u.id}>
-                                        <td><span className="report-id">#{u.id}</span></td>
-                                        <td><div className="flex-center gap-2" style={{ justifyContent: 'flex-start' }}><Users size={16} /> <b>{u.name}</b></div></td>
-                                        <td><span className="mono-text">{u.email}</span></td>
-                                        <td>{new Date(u.created_at).toLocaleDateString()}</td>
-                                        <td>
-                                            <span className={`status-pill ${u.is_admin ? 'resolved' : 'pending'}`}>
-                                                {u.is_admin ? 'ADMINISTRATOR' : 'STAFF USER'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="action-buttons">
-                                                <button className="btn-icon" onClick={() => handleToggleRole(u.id)} title="Toggle Admin/User"><Shield size={14} /></button>
-                                                <button className="btn-icon danger" onClick={() => handleDeleteUser(u.id)} title="Delete User"><Trash2 size={14} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : activeTab === 'work-orders' ? (
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>ID</th>
-                                    <th>Asset Reference</th>
-                                    <th>Assigned Staff</th>
-                                    <th>Priority</th>
-                                    <th>Lifecycle Status</th>
-                                    <th style={{ width: '100px' }}>Control</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {workOrders.map(wo => (
-                                    <tr key={wo.id}>
-                                        <td><span className="report-id">#{wo.id}</span></td>
-                                        <td><span className="id-badge secondary">DET-{wo.detection_id}</span></td>
-                                        <td>{users.find(u => u.id === wo.assigned_user_id)?.name || 'Unassigned'}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                { (wo.priority === 'High' || wo.priority === 'Critical') && <span className="priority-pulse" title="Immediate action required" /> }
-                                                <span className={`severity-badge ${wo.priority.toLowerCase()}`} style={{ display: 'inline-block' }}>{wo.priority.toUpperCase()}</span>
-                                            </div>
-                                        </td>
-                                        <td><span className={`status-pill ${wo.status.toLowerCase().replace(' ', '-')}`}>{wo.status}</span></td>
-                                        <td>
-                                            {wo.status !== "Repaired" && (
-                                                <button className="btn btn-success btn-xs" onClick={async () => {
-                                                    await axios.patch(`${API_BASE}/work-orders/${wo.id}`, { status: "Repaired"}, { headers: { ...authHeaders, 'Content-Type': 'application/json' } });
-                                                    fetchAdminData();
-                                                    showToast(`Work order #${wo.id} marked as repaired`);
-                                                }}>Resolve</button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : activeTab === 'alerts' ? (
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>ID</th>
-                                    <th>Severity</th>
-                                    <th>Alert Category</th>
-                                    <th>Signal Message</th>
-                                    <th style={{ width: '180px' }}>Detected At</th>
-                                    <th style={{ width: '80px' }}>Control</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {alerts.map(alert => (
-                                    <tr key={alert.id}>
-                                        <td><span className="report-id">#{alert.id}</span></td>
-                                        <td>
-                                            <span className={`severity-badge ${alert.type === 'danger' ? 'critical' : 'moderate'}`}>
-                                                {alert.type?.toUpperCase() || 'INFO'}
-                                            </span>
-                                        </td>
-                                        <td><b>{alert.title}</b></td>
-                                        <td>{alert.message}</td>
-                                        <td><span className="timestamp-text">{new Date(alert.timestamp).toLocaleString()}</span></td>
-                                        <td>
-                                            <button 
-                                                className="btn-icon danger" 
-                                                onClick={() => onDismissAlert?.(alert.id)}
-                                                title="Dismiss Alert"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {alerts.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                                            No active system alerts detected.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>ID</th>
-                                    <th>Actor</th>
-                                    <th>Action</th>
-                                    <th>Entity</th>
-                                    <th style={{ width: '90px' }}>Record</th>
-                                    <th style={{ width: '180px' }}>Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {auditLogs.map(log => (
-                                    <tr key={log.id}>
-                                        <td><span className="report-id">#{log.id}</span></td>
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                                <span>{log.user_name || "System"}</span>
-                                                <span className="mono-text">{log.user_email || "-"}</span>
-                                            </div>
-                                        </td>
-                                        <td>{log.action}</td>
-                                        <td><span className="id-badge secondary">{log.table_name}</span></td>
-                                        <td>{log.record_id ?? "-"}</td>
-                                        <td><span className="timestamp-text">{log.timestamp ? new Date(log.timestamp).toLocaleString() : "-"}</span></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
 
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                        <div className="pagination-footer">
-                            <span className="pagination-info">Showing page {currentPage} of {totalPages} ({filteredReports.length} results)</span>
-                            <div className="pagination-controls">
-                                <button
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    disabled={currentPage === 1}
-                                >Prev</button>
-                                <button
-                                    className="btn btn-ghost btn-sm"
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={currentPage === totalPages}
-                                >Next</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                        <select
+                            className="admin-filter-select"
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                        >
+                            <option value="all">All Issue Types</option>
+                            {Object.keys(ISSUE_LABELS).map(key => (
+                                <option key={key} value={key}>{ISSUE_LABELS[key]}</option>
+                            ))}
+                        </select>
 
-                <div className="report-detail-panel">
-                    {selectedReport ? (
-                        <div className="detail-card animate-in">
-                            <div className="detail-header">
-                                <h3>Report #{selectedReport.id}</h3>
-                                <span className={`status-pill ${selectedReport.status.toLowerCase()}`}>
-                                    {selectedReport.status}
-                                </span>
-                            </div>
-                            <div className="detail-image">
-                                <img src={getImageUrl(selectedReport.image_path)} alt="Evidence" />
-                            </div>
-                            <div className="detail-info-grid">
-                                <div className="detail-info-cell">
-                                    <span className="label">AI Output Analysis</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
-                                        <span className="value issue-badge">{selectedReport.problem_type}</span>
-                                        <span className="severity-badge" style={{ backgroundColor: getSeverity(selectedReport.problem_type).bg, color: getSeverity(selectedReport.problem_type).color, borderColor: getSeverity(selectedReport.problem_type).color }}>
-                                            {getSeverity(selectedReport.problem_type).label} • {getSeverity(selectedReport.problem_type).conf}% CONF
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="detail-info-cell">
-                                    <span className="label">Logged Date</span>
-                                    <span className="value"><Calendar size={12} style={{ display: 'inline', marginRight: 4 }} />{new Date(selectedReport.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                                <div className="detail-info-cell full-width">
-                                    <span className="label">GPS Location</span>
-                                    <span className="value mono-text"><MapPin size={12} style={{ display: 'inline', marginRight: 4 }} />{selectedReport.location}</span>
-                                </div>
-                            </div>
-                            <div className="detail-desc">
-                                <span className="label">AI/User Description</span>
-                                <p>{selectedReport.description}</p>
-                            </div>
-                            <div className="detail-actions">
-                                {selectedReport.status !== "Resolved" && (
-                                    <button
-                                        className="btn btn-success"
-                                        onClick={() => handleResolveClick(selectedReport.id)}
-                                    >
-                                        <CheckCircle size={15} />
-                                        Mark Resolved
-                                    </button>
-                                )}
+                        <button
+                            type="button"
+                            className="admin-sort-toggle-btn"
+                            onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
+                            title={sortOrder === 'newest' ? 'Sorted Newest First' : 'Sorted Oldest First'}
+                        >
+                            <TrendingUp size={16} style={{ transform: sortOrder === 'newest' ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }} />
+                        </button>
+                    </div>
+
+                    <div className="toolbar-controls-right">
+                        <div className="admin-status-segmented-group">
+                            {["all", "pending", "resolved"].map(status => (
                                 <button
-                                    className="btn btn-danger"
-                                    onClick={() => handleDelete(selectedReport.id)}
+                                    type="button"
+                                    key={status}
+                                    className={`admin-status-tab-btn ${statusFilter === status ? 'active' : ''}`}
+                                    onClick={() => setStatusFilter(status)}
                                 >
-                                    <Trash2 size={15} />
-                                    Delete Report
+                                    {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+
+                        {selectedReports.length > 0 && (
+                            <div className="admin-bulk-actions-ribbon">
+                                <span className="admin-bulk-count-label">{selectedReports.length} selected</span>
+                                <select
+                                    value={bulkAction}
+                                    onChange={(e) => setBulkAction(e.target.value as any)}
+                                    className="admin-bulk-action-select"
+                                >
+                                    <option value="none">Bulk Action</option>
+                                    <option value="resolve">Mark Resolved</option>
+                                    <option value="delete">Delete</option>
+                                </select>
+                                <button
+                                    type="button"
+                                    className="admin-bulk-apply-btn"
+                                    onClick={handleBulkAction}
+                                    disabled={bulkAction === "none"}
+                                >
+                                    Apply
                                 </button>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="detail-placeholder container-placeholder">
-                            <div className="icon-wrapper">
-                                <Search size={32} strokeWidth={1.5} />
-                            </div>
-                            <h3>No Report Selected</h3>
-                            <p>Choose an item from the list to view full details and manage its status.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+                        )}
 
-            {/* Resolution Modal */}
-            {resolveModal && (
-                <div className="modal-overlay animate-in">
-                    <div className="modal-content">
-                        <h3>Resolution Action</h3>
-                        <p>Provide an optional note detailing how this issue was resolved. It will be permanently appended to the report.</p>
-                        <textarea
-                            value={resolveNote}
-                            onChange={(e) => setResolveNote(e.target.value)}
-                            placeholder="e.g., Dispatched maintenance crew, road patched successfully."
-                            rows={3}
-                            className="resolve-textarea"
-                        />
-                        <div className="modal-actions">
-                            <button className="btn btn-ghost" onClick={() => setResolveModal(null)}>Cancel</button>
-                            <button className="btn btn-success" onClick={submitResolve}>Confirm Resolution</button>
-                        </div>
+                        <button type="button" className="admin-export-csv-btn" onClick={handleExport} title="Export to CSV">
+                            <Download size={14} />
+                            <span>Export CSV</span>
+                        </button>
                     </div>
                 </div>
             )}
 
-            {inviteTokenModal && (
-                <div className="modal-overlay animate-in">
-                    <div className="modal-content">
-                        <h3>Admin Invite Token</h3>
-                        <p>Share this one-time token securely. It expires at {new Date(inviteTokenModal.expiresAt).toLocaleString()}.</p>
-                        <textarea
-                            value={inviteTokenModal.token}
-                            onChange={(e) => setInviteTokenModal({ ...inviteTokenModal, token: e.target.value })}
-                            rows={3}
-                            className="resolve-textarea"
-                            style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
-                        />
-                        <div className="modal-actions">
-                            <button className="btn btn-ghost" onClick={() => setInviteTokenModal(null)}>Close</button>
-                            <button className="btn btn-success" onClick={() => copyToClipboard(inviteTokenModal.token)}>Copy Token</button>
+            {/* Split Grid: Main Surface & Inspector Panel */}
+            <div className={`admin-content-split-grid ${activeTab === 'issues' && selectedReport ? 'with-sidebar' : ''}`}>
+                <div className="admin-table-surface">
+                    {loading ? (
+                        <div className="loading-state container-placeholder">
+                            <RefreshCw className="animate-spin" size={32} style={{ color: 'var(--primary)' }} />
+                            <h3>Synchronizing Network...</h3>
+                            <p>Loading real-time state from municipal edge nodes.</p>
+                        </div>
+                    ) : activeTab === 'issues' ? (
+                        filteredReports.length === 0 ? (
+                            <div className="empty-state container-placeholder">
+                                <Database size={40} strokeWidth={1.5} style={{ color: 'var(--text-muted)' }} />
+                                <h3>No Reports Found</h3>
+                                <p>Try adjusting your search criteria or filter tags.</p>
+                            </div>
+                        ) : (
+                            <div className="admin-table-scroll-wrap">
+                                <table className="admin-enterprise-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '36px', textAlign: 'center' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={filteredReports.length > 0 && selectedReports.length === filteredReports.length} 
+                                                    onChange={toggleSelectAll} 
+                                                    className="select-all-checkbox" 
+                                                />
+                                            </th>
+                                            <th style={{ width: '48px' }}>ID</th>
+                                            <th style={{ width: '46px', textAlign: 'center' }}>Asset</th>
+                                            <th>Issue Type</th>
+                                            <th>Location</th>
+                                            <th>Reported By</th>
+                                            <th>Assigned Worker</th>
+                                            <th>Logged Date</th>
+                                            <th>Status</th>
+                                            <th style={{ width: '120px', textAlign: 'right' }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedReports.map((report) => (
+                                            <tr key={report.id} className={selectedReport?.id === report.id ? 'selected-row' : ''}>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedReports.includes(report.id)} 
+                                                        onChange={() => toggleSelectReport(report.id)} 
+                                                        className="row-checkbox" 
+                                                    />
+                                                </td>
+                                                <td><span className="admin-table-id-pill">#{report.id}</span></td>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <div 
+                                                        className="admin-table-thumb"
+                                                        onClick={() => setSelectedReport(selectedReport?.id === report.id ? null : report)}
+                                                        title="Click to view details"
+                                                    >
+                                                        {report.image_path ? (
+                                                            <img src={getImageUrl(report.image_path)} alt="thumb" />
+                                                        ) : (
+                                                            <Camera size={14} opacity={0.35} />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className={`admin-issue-badge issue-${(report.problem_type || 'other').toLowerCase().replace(/\s+/g, '-')}`}>
+                                                        {report.problem_type || 'Unknown'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="admin-location-pill" title={report.location}>
+                                                        <MapPin size={12} style={{ flexShrink: 0 }} />
+                                                        <span>{report.location}</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span 
+                                                        style={{ 
+                                                            fontSize: '0.78125rem', 
+                                                            fontWeight: 600, 
+                                                            color: 'var(--text-main)',
+                                                            maxWidth: '100px',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'inline-block',
+                                                            verticalAlign: 'middle'
+                                                        }}
+                                                        title={report.user_name || 'Citizen'}
+                                                    >
+                                                        {report.user_name || 'Citizen'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {report.assigned_worker ? (
+                                                        <span className="admin-worker-badge">
+                                                            👷 {report.assigned_worker}
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="admin-worker-assign-trigger"
+                                                            onClick={() => {
+                                                                setAssignWorkerModal(report);
+                                                                setWorkerPriority(report.priority_level || "Medium");
+                                                            }}
+                                                        >
+                                                            + Dispatch
+                                                        </button>
+                                                    )}
+                                                </td>
+                                                <td><span className="timestamp-text">{new Date(report.timestamp).toLocaleDateString()}</span></td>
+                                                <td><span className={`admin-status-pill ${report.status.toLowerCase()}`}>{report.status}</span></td>
+                                                <td>
+                                                    <div className="admin-row-actions-group" style={{ justifyContent: 'flex-end' }}>
+                                                        <button 
+                                                            type="button" 
+                                                            className="admin-row-action-btn" 
+                                                            title="Inspect Details" 
+                                                            onClick={() => setSelectedReport(selectedReport?.id === report.id ? null : report)}
+                                                        >
+                                                            <Eye size={13} />
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            className="admin-row-action-btn" 
+                                                            title="Dispatch Worker" 
+                                                            onClick={() => { 
+                                                                setAssignWorkerModal(report); 
+                                                                setWorkerPriority(report.priority_level || "Medium"); 
+                                                            }} 
+                                                            style={{ color: 'var(--primary)' }}
+                                                        >
+                                                            <Briefcase size={13} />
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            className="admin-row-action-btn success" 
+                                                            title="Resolve Report" 
+                                                            onClick={() => handleResolveClick(report.id)} 
+                                                            disabled={report.status === "Resolved"}
+                                                        >
+                                                            <CheckCircle size={13} />
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            className="admin-row-action-btn danger" 
+                                                            title="Delete Report" 
+                                                            onClick={() => handleDelete(report.id)}
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
+                    ) : activeTab === 'personnel' ? (
+                        <div className="admin-table-scroll-wrap">
+                            <table className="admin-enterprise-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '50px' }}>ID</th>
+                                        <th>Personnel Name</th>
+                                        <th>Secure Email</th>
+                                        <th>Access Granted</th>
+                                        <th>Role Classification</th>
+                                        <th style={{ width: '90px', textAlign: 'right' }}>Controls</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {users.map(u => (
+                                        <tr key={u.id}>
+                                            <td><span className="admin-table-id-pill">#{u.id}</span></td>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <Users size={15} style={{ color: 'var(--primary)' }} />
+                                                    <b style={{ color: 'var(--text-main)' }}>{u.name}</b>
+                                                </div>
+                                            </td>
+                                            <td><span className="mono-text" style={{ fontSize: '0.8125rem' }}>{u.email}</span></td>
+                                            <td><span className="timestamp-text">{new Date(u.created_at).toLocaleDateString()}</span></td>
+                                            <td>
+                                                <span className={`admin-status-pill ${u.is_admin ? 'resolved' : 'pending'}`}>
+                                                    {u.is_admin ? 'ADMINISTRATOR' : 'STAFF USER'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="admin-row-actions-group" style={{ justifyContent: 'flex-end' }}>
+                                                    <button type="button" className="admin-row-action-btn" onClick={() => handleToggleRole(u.id)} title="Toggle Admin / Staff Role">
+                                                        <Shield size={13} />
+                                                    </button>
+                                                    <button type="button" className="admin-row-action-btn danger" onClick={() => handleDeleteUser(u.id)} title="Revoke & Delete User">
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {users.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                                No staff members currently registered.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : activeTab === 'work-orders' ? (
+                        <div className="admin-table-scroll-wrap">
+                            <table className="admin-enterprise-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '50px' }}>ID</th>
+                                        <th>Asset Reference</th>
+                                        <th>Assigned Staff</th>
+                                        <th>Priority</th>
+                                        <th>Lifecycle Status</th>
+                                        <th style={{ width: '100px', textAlign: 'right' }}>Control</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {workOrders.map(wo => (
+                                        <tr key={wo.id}>
+                                            <td><span className="admin-table-id-pill">#{wo.id}</span></td>
+                                            <td><span className="admin-worker-badge" style={{ background: 'var(--bg-hover)', color: 'var(--text-main)', borderColor: 'var(--border)' }}>DET-{wo.detection_id}</span></td>
+                                            <td><b style={{ color: 'var(--text-main)' }}>{users.find(u => u.id === wo.assigned_user_id)?.name || 'Unassigned'}</b></td>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span className={`admin-issue-badge ${wo.priority.toLowerCase() === 'critical' ? 'issue-pothole' : wo.priority.toLowerCase() === 'high' ? 'issue-traffic-signal' : 'issue-other'}`}>
+                                                        {wo.priority.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td><span className={`admin-status-pill ${wo.status.toLowerCase().replace(/\s+/g, '-')}`}>{wo.status}</span></td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                {wo.status !== "Repaired" && (
+                                                    <button 
+                                                        type="button" 
+                                                        className="admin-bulk-apply-btn"
+                                                        style={{ background: '#10b981' }}
+                                                        onClick={async () => {
+                                                            await axios.patch(`${API_BASE}/work-orders/${wo.id}`, { status: "Repaired"}, { headers: { ...authHeaders, 'Content-Type': 'application/json' } });
+                                                            fetchAdminData();
+                                                            showToast(`Work order #${wo.id} marked as repaired`);
+                                                        }}
+                                                    >
+                                                        Resolve
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {workOrders.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                                No active work orders dispatched.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : activeTab === 'alerts' ? (
+                        <div className="admin-table-scroll-wrap">
+                            <table className="admin-enterprise-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '50px' }}>ID</th>
+                                        <th style={{ width: '80px' }}>Severity</th>
+                                        <th>Alert Category</th>
+                                        <th>Signal Message</th>
+                                        <th style={{ width: '160px' }}>Detected At</th>
+                                        <th style={{ width: '70px', textAlign: 'right' }}>Control</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {alerts.map(alert => (
+                                        <tr key={alert.id}>
+                                            <td><span className="admin-table-id-pill">#{alert.id}</span></td>
+                                            <td>
+                                                <span className={`admin-issue-badge ${alert.type === 'danger' ? 'issue-pothole' : 'issue-traffic-signal'}`}>
+                                                    {alert.type?.toUpperCase() || 'INFO'}
+                                                </span>
+                                            </td>
+                                            <td><b style={{ color: 'var(--text-main)' }}>{alert.title}</b></td>
+                                            <td style={{ color: 'var(--text-secondary)' }}>{alert.message}</td>
+                                            <td><span className="timestamp-text">{new Date(alert.timestamp).toLocaleString()}</span></td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <button 
+                                                    type="button"
+                                                    className="admin-row-action-btn danger" 
+                                                    onClick={() => onDismissAlert?.(alert.id)}
+                                                    title="Dismiss Alert"
+                                                >
+                                                    <X size={13} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {alerts.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                                No active telemetry alerts detected.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="admin-table-scroll-wrap">
+                            <table className="admin-enterprise-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '50px' }}>ID</th>
+                                        <th>Actor</th>
+                                        <th>Action Executed</th>
+                                        <th>Entity Domain</th>
+                                        <th style={{ width: '80px' }}>Record ID</th>
+                                        <th style={{ width: '160px' }}>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {auditLogs.map(log => (
+                                        <tr key={log.id}>
+                                            <td><span className="admin-table-id-pill">#{log.id}</span></td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                    <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{log.user_name || "System Automated"}</span>
+                                                    <span className="mono-text" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{log.user_email || "-"}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className="admin-issue-badge issue-other" style={{ textTransform: 'none' }}>
+                                                    {log.action}
+                                                </span>
+                                            </td>
+                                            <td><span className="mono-text" style={{ fontSize: '0.8125rem' }}>{log.table_name}</span></td>
+                                            <td><span className="admin-table-id-pill">{log.record_id ?? "-"}</span></td>
+                                            <td><span className="timestamp-text">{log.timestamp ? new Date(log.timestamp).toLocaleString() : "-"}</span></td>
+                                        </tr>
+                                    ))}
+                                    {auditLogs.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                                                No security audit entries recorded yet.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Pagination Footer */}
+                    {activeTab === 'issues' && totalPages > 1 && (
+                        <div className="admin-table-pagination-bar">
+                            <span className="admin-pagination-status-text">
+                                Page <b>{currentPage}</b> of <b>{totalPages}</b> ({filteredReports.length} total reports)
+                            </span>
+                            <div className="admin-pagination-buttons-group">
+                                <button
+                                    type="button"
+                                    className="admin-page-nav-btn"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    type="button"
+                                    className="admin-page-nav-btn"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Selected Report Inspector Panel */}
+                {activeTab === 'issues' && selectedReport && (
+                    <div className="admin-detail-side-panel animate-in">
+                        <div className="admin-detail-header-row">
+                            <h3 className="admin-detail-title">Report #{selectedReport.id}</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className={`admin-status-pill ${selectedReport.status.toLowerCase()}`}>
+                                    {selectedReport.status}
+                                </span>
+                                <button 
+                                    type="button" 
+                                    className="admin-detail-close-btn" 
+                                    onClick={() => setSelectedReport(null)}
+                                    title="Close details"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {selectedReport.image_path && (
+                            <div className="admin-detail-image-box">
+                                <img src={getImageUrl(selectedReport.image_path)} alt="Evidence" />
+                            </div>
+                        )}
+
+                        <div className="admin-detail-chips-grid">
+                            <div className="admin-detail-cell">
+                                <span className="admin-detail-cell-label">AI Classification</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                    <span className="admin-issue-badge">{selectedReport.problem_type}</span>
+                                    <span className="severity-badge" style={{ backgroundColor: getSeverity(selectedReport.problem_type).bg, color: getSeverity(selectedReport.problem_type).color, borderColor: getSeverity(selectedReport.problem_type).color }}>
+                                        {getSeverity(selectedReport.problem_type).label} • {getSeverity(selectedReport.problem_type).conf}% CONF
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="admin-detail-cell">
+                                <span className="admin-detail-cell-label">Logged Date</span>
+                                <span className="admin-detail-cell-value">
+                                    <Calendar size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                                    {new Date(selectedReport.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+
+                            <div className="admin-detail-cell full-width">
+                                <span className="admin-detail-cell-label">GPS Location</span>
+                                <span className="admin-detail-cell-value mono-text" style={{ wordBreak: 'break-all', fontSize: '0.8125rem' }}>
+                                    <MapPin size={13} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                                    {selectedReport.location}
+                                </span>
+                            </div>
+
+                            <div className="admin-detail-cell">
+                                <span className="admin-detail-cell-label">Reported By</span>
+                                <span className="admin-detail-cell-value" style={{ fontSize: '0.8125rem' }}>
+                                    👤 {selectedReport.user_name || 'Citizen Reporter'}
+                                </span>
+                            </div>
+
+                            <div className="admin-detail-cell">
+                                <span className="admin-detail-cell-label">Assigned Field Worker</span>
+                                <span className="admin-detail-cell-value" style={{ fontSize: '0.8125rem', color: selectedReport.assigned_worker ? 'var(--primary)' : 'var(--text-muted)' }}>
+                                    {selectedReport.assigned_worker ? `👷 ${selectedReport.assigned_worker}` : 'Unassigned'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="admin-detail-desc-box">
+                            <span className="admin-detail-cell-label">Description</span>
+                            <p style={{ margin: '6px 0 0', color: 'var(--text-main)', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                                {selectedReport.description}
+                            </p>
+                        </div>
+
+                        {selectedReport.worker_notes && (
+                            <div className="admin-detail-desc-box" style={{ borderLeft: '3px solid var(--primary)' }}>
+                                <span className="admin-detail-cell-label" style={{ color: 'var(--primary)' }}>Worker Instructions</span>
+                                <p style={{ margin: '6px 0 0', color: 'var(--text-main)', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                                    {selectedReport.worker_notes}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="admin-detail-actions-footer">
+                            <button
+                                type="button"
+                                className="admin-detail-cta-btn primary"
+                                onClick={() => {
+                                    setAssignWorkerModal(selectedReport);
+                                    setWorkerPriority(selectedReport.priority_level || "Medium");
+                                }}
+                            >
+                                <Briefcase size={14} />
+                                <span>{selectedReport.assigned_worker ? "Reassign Worker" : "Dispatch Worker"}</span>
+                            </button>
+                            {selectedReport.status !== "Resolved" && (
+                                <button
+                                    type="button"
+                                    className="admin-detail-cta-btn"
+                                    style={{ background: '#10b981', color: 'white' }}
+                                    onClick={() => handleResolveClick(selectedReport.id)}
+                                >
+                                    <CheckCircle size={14} />
+                                    <span>Mark Resolved</span>
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="admin-detail-cta-btn danger"
+                                onClick={() => handleDelete(selectedReport.id)}
+                            >
+                                <Trash2 size={14} />
+                                <span>Delete</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Assign Worker to Location Modal */}
+            {assignWorkerModal && (
+                <div className="admin-modal-overlay">
+                    <div className="admin-modal-card">
+                        <div className="admin-modal-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--primary-glow)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Briefcase size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Dispatch Field Worker</h3>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Issue #{assignWorkerModal.id} • {assignWorkerModal.problem_type}</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button" 
+                                className="admin-detail-close-btn" 
+                                onClick={() => setAssignWorkerModal(null)}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAssignWorkerSubmit}>
+                            <div className="admin-modal-body">
+                                {/* Location Preview Card */}
+                                <div style={{ padding: '10px 14px', background: 'var(--bg-hover)', borderRadius: '10px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <MapPin size={18} color="var(--primary)" />
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                        <div style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Target Location</div>
+                                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{assignWorkerModal.location}</div>
+                                    </div>
+                                </div>
+
+                                <div className="admin-modal-field">
+                                    <label className="admin-modal-label">
+                                        Select or Enter Worker / Field Crew *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        list="registered-workers-list"
+                                        className="admin-modal-input"
+                                        value={workerName}
+                                        onChange={(e) => setWorkerName(e.target.value)}
+                                        placeholder="e.g., Road Repair Unit Alpha, John Doe, Electrical Crew #2"
+                                        required
+                                    />
+                                    <datalist id="registered-workers-list">
+                                        {users.map(u => (
+                                            <option key={u.id} value={`${u.name} (${u.email})`} />
+                                        ))}
+                                        <option value="Road Maintenance Unit Alpha" />
+                                        <option value="Municipal Drainage Team" />
+                                        <option value="Streetlight & Electrical Crew" />
+                                        <option value="Rapid Pothole Patch Squad" />
+                                        <option value="Traffic Signal Tech Division" />
+                                    </datalist>
+                                    <div className="admin-quick-template-chips">
+                                        {["Road Unit Alpha", "Drainage Team", "Electrical Crew", "Rapid Patch Squad"].map(unit => (
+                                            <button 
+                                                key={unit} 
+                                                type="button" 
+                                                className="admin-quick-chip"
+                                                onClick={() => setWorkerName(unit)}
+                                            >
+                                                + {unit}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="admin-modal-field">
+                                    <label className="admin-modal-label">Priority Level</label>
+                                    <select
+                                        value={workerPriority}
+                                        onChange={(e) => setWorkerPriority(e.target.value)}
+                                        className="admin-modal-input"
+                                        style={{ cursor: 'pointer' }}
+                                    >
+                                        <option value="Low">Low Priority</option>
+                                        <option value="Medium">Medium Priority</option>
+                                        <option value="High">High Priority</option>
+                                        <option value="Critical">Critical (Immediate Dispatch)</option>
+                                    </select>
+                                </div>
+
+                                <div className="admin-modal-field">
+                                    <label className="admin-modal-label">Work Order Instructions / Notes (Optional)</label>
+                                    <textarea
+                                        value={workerNotes}
+                                        onChange={(e) => setWorkerNotes(e.target.value)}
+                                        placeholder="Instructions for the assigned team (e.g. Inspect pothole depth, apply asphalt patch, replace broken bulb)..."
+                                        rows={3}
+                                        className="admin-modal-textarea"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="admin-modal-footer">
+                                <button type="button" className="btn btn-ghost" onClick={() => setAssignWorkerModal(null)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={isAssigning || !workerName.trim()}>
+                                    {isAssigning ? "Dispatching..." : "Confirm & Dispatch Worker"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Resolution Modal */}
+            {resolveModal && (
+                <div className="admin-modal-overlay">
+                    <div className="admin-modal-card">
+                        <div className="admin-modal-header">
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Resolution Confirmation</h3>
+                                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    {resolveModal.reportId === 'bulk' ? `Resolving ${selectedReports.length} reports` : `Resolving report #${resolveModal.reportId}`}
+                                </p>
+                            </div>
+                            <button 
+                                type="button" 
+                                className="admin-detail-close-btn" 
+                                onClick={() => setResolveModal(null)}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="admin-modal-body">
+                            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                Provide an optional note detailing how this issue was resolved. It will be permanently recorded into the audit trail.
+                            </p>
+                            <textarea
+                                value={resolveNote}
+                                onChange={(e) => setResolveNote(e.target.value)}
+                                placeholder="e.g., Dispatched maintenance crew, road patched successfully with asphalt filler."
+                                rows={3}
+                                className="admin-modal-textarea"
+                            />
+                        </div>
+                        <div className="admin-modal-footer">
+                            <button type="button" className="btn btn-ghost" onClick={() => setResolveModal(null)}>Cancel</button>
+                            <button type="button" className="btn btn-success" onClick={submitResolve}>Confirm Resolution</button>
                         </div>
                     </div>
                 </div>
@@ -940,424 +1356,6 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
                 ))}
             </div>
 
-            <style>{`
-                /* New Premium Components CSS */
-                .severity-badge {
-                    font-size: 0.5rem;
-                    font-weight: 800;
-                    padding: 1px 4px;
-                    border-radius: 3px;
-                    border: 1px solid;
-                    letter-spacing: 0.05em;
-                    white-space: nowrap;
-                    display: inline-flex;
-                    align-items: center;
-                }
-                
-                .modal-overlay {
-                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-                    display: flex; align-items: center; justify-content: center;
-                    z-index: 1000;
-                }
-                .modal-content {
-                    background: var(--bg-card); width: 400px; padding: 24px;
-                    border-radius: 16px; border: 1px solid var(--border);
-                    box-shadow: var(--shadow-premium);
-                    display: flex; flex-direction: column; gap: 12px;
-                }
-                .modal-content h3 { font-size: 1.2rem; font-weight: 800; margin: 0; }
-                .modal-content p { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 8px 0; }
-                .resolve-textarea {
-                    width: 100%; border: 1px solid var(--border); border-radius: 8px;
-                    padding: 12px; background: var(--bg-hover); color: var(--text-main);
-                    font-size: 0.85rem; font-family: inherit; resize: none; margin-bottom: 8px;
-                }
-                .resolve-textarea:focus { outline: none; border-color: var(--primary); }
-                .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
-
-                .toast-container {
-                    position: fixed; bottom: 24px; right: 24px;
-                    display: flex; flex-direction: column; gap: 8px; z-index: 5000;
-                    pointer-events: none;
-                }
-                .toast-message {
-                    display: flex; align-items: center; gap: 10px; padding: 12px 20px;
-                    border-radius: 10px; font-weight: 700; font-size: 0.85rem;
-                    box-shadow: var(--shadow-md); pointer-events: auto;
-                }
-                .toast-success { background: #10b981; color: white; border: 1px solid #059669; }
-                .toast-error { background: #ef4444; color: white; border: 1px solid #b91c1c; }
-                .toast-info { background: #3b82f6; color: white; border: 1px solid #2563eb; }
-
-                .admin-page {
-
-                    min-height: 100%;
-                    display: flex;
-                    flex-direction: column;
-                    padding: 24px;
-                    padding-bottom: 40px;
-                    box-sizing: border-box;
-                    max-width: 1600px;
-                    margin: 0 auto;
-                    width: 100%;
-                }
-                
-                .section-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 8px;
-                }
-                .section-title { 
-                    font-size: 2.25rem; 
-                    font-weight: 800; 
-                    margin-bottom: 4px; 
-                    color: var(--text-main);
-                    letter-spacing: -0.01em;
-                }
-                .section-subtitle { 
-                    font-size: 1.1rem; 
-                    color: var(--text-muted); 
-                }
-
-                .stat-card { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
-                .stat-card:hover { transform: translateY(-3px); border-color: var(--primary); background: var(--bg-hover); }
-                .stat-card.active-filter { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); border-width: 2px; }
-
-                .urban-health-hero {
-                    background: var(--bg-card);
-                    border: 1px solid var(--border);
-                    border-radius: 16px;
-                    padding: 24px;
-                    margin: 16px 0;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    background-image: radial-gradient(circle at top right, rgba(249, 115, 22, 0.05), transparent);
-                }
-                .health-left { display: flex; align-items: center; gap: 20px; }
-                .health-score-ring { width: 80px; height: 80px; }
-                .circular-chart { display: block; margin: 10px auto; max-width: 100%; max-height: 250px; }
-                .circle-bg { fill: none; stroke: var(--border); stroke-width: 3; }
-                .circle { fill: none; stroke-width: 3; stroke-linecap: round; stroke: var(--primary); animation: progress 1s ease-out forwards; }
-                @keyframes progress { 0% { stroke-dasharray: 0 100; } }
-                .percentage { fill: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.5rem; text-anchor: middle; font-weight: 800; }
-                
-                .health-right { text-align: right; display: flex; flex-direction: column; gap: 12px; }
-                .trend-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
-                .trend-badge.positive { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-                
-                .edge-metrics-hud { display: flex; gap: 12px; justify-content: flex-end; }
-                .hud-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; background: var(--bg-body); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); color: var(--text-muted); }
-                .hud-tag b { color: var(--text-main); }
-
-                .priority-pulse { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); animation: pulse-priority 1s infinite alternate; }
-                @keyframes pulse-priority { from { transform: scale(0.8); opacity: 0.5; } to { transform: scale(1.2); opacity: 1; } }
-                
-                .admin-grid {
-                    display: grid;
-                    grid-template-columns: 2fr 1fr;
-                    gap: 16px;
-                    margin-top: 8px;
-                    flex: 1;
-                    align-items: flex-start;
-                }
-                
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-                    gap: 12px;
-                    margin: 8px 0;
-                }
-                
-                .stat-card {
-                    background: var(--bg-card);
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    padding: 8px 12px;
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    box-shadow: var(--shadow-sm);
-                }
-                
-                .stat-icon {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 8px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    flex-shrink: 0;
-                }
-                
-                .stat-total .stat-icon { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-                .stat-pending .stat-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-                .stat-resolved .stat-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-                .stat-today .stat-icon { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-                
-                .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--text-main); }
-                .stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
-                
-                .admin-toolbar {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 16px;
-                    background: var(--bg-card);
-                    padding: 12px 16px;
-                    border-radius: 12px;
-                    border: 1px solid var(--border);
-                    flex-wrap: nowrap;
-                    overflow-x: auto;
-                    white-space: nowrap;
-                }
-                
-                .toolbar-left, .toolbar-right {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    flex-wrap: nowrap;
-                }
-
-                .bulk-actions { 
-                    display: flex; 
-                    align-items: center; 
-                    gap: 8px; 
-                    background: rgba(59, 130, 246, 0.08); 
-                    padding: 4px 8px; 
-                    border-radius: 8px; 
-                    border: 1px solid rgba(59, 130, 246, 0.2); 
-                    height: 42px;
-                    box-sizing: border-box;
-                }
-                .selected-count { font-size: 0.8rem; font-weight: 800; color: #3b82f6; white-space: nowrap; }
-                .bulk-select { 
-                    height: 30px;
-                    padding: 0 8px; 
-                    border-radius: 6px; 
-                    border: 1px solid var(--border); 
-                    background: var(--bg-card-solid); 
-                    color: var(--text-main); 
-                    font-size: 0.75rem; 
-                    font-weight: 700; 
-                    outline: none; 
-                    cursor: pointer;
-                }
-
-                .admin-toolbar .btn {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                    flex-shrink: 0;
-                    white-space: nowrap;
-                    height: 42px;
-                    padding: 0 16px;
-                    font-size: 0.85rem;
-                    border-radius: 8px;
-                    font-weight: 700;
-                    box-sizing: border-box;
-                }
-
-                .admin-toolbar .action-badge {
-                    font-size: 0.75rem;
-                    letter-spacing: 0.05em;
-                    font-weight: 800;
-                    padding: 0 14px;
-                    gap: 6px;
-                }
-
-                .admin-toolbar .sort-btn {
-                    padding: 0 12px;
-                }
-                
-                .search-box { flex: 1; min-width: 220px; max-width: 320px; position: relative; flex-shrink: 0; height: 42px; }
-                .search-box input {
-                    width: 100%;
-                    height: 100%;
-                    box-sizing: border-box;
-                    padding: 0 16px 0 36px;
-                    border: 1px solid var(--border);
-                    border-radius: 8px;
-                    background: var(--bg-hover);
-                    color: var(--text-main);
-                    font-size: 0.85rem;
-                    transition: all 0.2s ease;
-                }
-                .search-box input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15); background: var(--bg-card-solid); }
-                .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-
-                .admin-select {
-                    height: 42px;
-                    padding: 0 16px;
-                    border: 1px solid var(--border);
-                    border-radius: 8px;
-                    background: var(--bg-hover);
-                    color: var(--text-main);
-                    font-size: 0.85rem;
-                    font-weight: 700;
-                    cursor: pointer;
-                    outline: none;
-                    transition: border-color 0.2s ease;
-                }
-                .admin-select:focus { border-color: var(--primary); }
-                
-                .status-tabs { 
-                    display: flex; 
-                    background: var(--bg-hover); 
-                    border: 1px solid var(--border); 
-                    border-radius: 8px; 
-                    padding: 4px; 
-                    gap: 4px;
-                    height: 42px;
-                    box-sizing: border-box;
-                    align-items: center;
-                }
-                .status-tab { 
-                    height: 100%;
-                    padding: 0 16px; 
-                    border: none; 
-                    background: transparent; 
-                    color: var(--text-muted); 
-                    font-size: 0.85rem; 
-                    font-weight: 800; 
-                    border-radius: 6px; 
-                    cursor: pointer; 
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                }
-                .status-tab:hover { color: var(--text-main); background: rgba(0,0,0,0.05); }
-                .status-tab.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25); }
-                
-                .reports-table-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
-                .admin-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-                .admin-table th { 
-                    text-align: left; 
-                    padding: 12px; 
-                    border-bottom: 1px solid var(--border); 
-                    background: var(--bg-card-solid); 
-                    color: var(--text-muted); 
-                    font-size: 0.8rem; 
-                    font-weight: 800; 
-                    text-transform: uppercase; 
-                    letter-spacing: 0.05em; 
-                }
-                .admin-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.95rem; color: var(--text-secondary); vertical-align: middle; }
-                .admin-table tr:hover { background: var(--bg-hover); }
-                .admin-table tr.selected { background: rgba(249, 115, 22, 0.05); border-left: 3px solid var(--primary); }
-                
-                .report-id { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--primary); font-size: 0.9rem; }
-                .mono-text { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-muted); }
-                
-                .issue-badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-main); display: inline-block; }
-                .issue-pothole, .issue-road-damage { color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); }
-                .issue-broken-streetlight, .issue-traffic-signal { color: #eab308; border-color: rgba(234, 179, 8, 0.3); background: rgba(234, 179, 8, 0.1); }
-                .issue-fallen-tree { color: #22c55e; border-color: rgba(34, 197, 94, 0.3); background: rgba(34, 197, 94, 0.1); }
-                .issue-flooding { color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.1); }
-                .issue-garbage-dump { color: #a855f7; border-color: rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.1); }
-                .issue-other { color: var(--text-secondary); border-color: var(--border); background: var(--bg-card); }
-                
-                .status-pill { padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; }
-                .status-pill.pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
-                .status-pill.resolved { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
-                
-                .action-buttons { display: flex; gap: 4px; }
-                .btn-icon { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); width: 24px; height: 24px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-                .btn-icon:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-main); border-color: var(--primary); }
-                .btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
-                .btn-icon.resolved-btn:disabled { opacity: 1; background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
-                
-                .report-detail-panel { position: sticky; top: 20px; min-width: 0; }
-                .detail-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; }
-                .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-                .detail-card h3 { font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0; }
-                .detail-image {
-                    width: 100%;
-                    height: 220px;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    margin-bottom: 16px;
-                    background: var(--bg-body);
-                    border: 1px solid var(--border);
-                    cursor: pointer;
-                }
-                .detail-image img { width: 100%; height: 100%; object-fit: contain; background: black; }
-                
-                .detail-info-grid {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 12px;
-                    margin-bottom: 16px;
-                }
-                .detail-info-cell {
-                    display: flex;
-                    flex-direction: column;
-                    flex: 1;
-                    min-width: 130px;
-                    gap: 4px;
-                    background: var(--bg-hover);
-                    padding: 10px 12px;
-                    border-radius: 8px;
-                    border: 1px solid var(--border);
-                }
-                .detail-info-cell.full-width { flex: 0 0 100%; }
-                
-                .detail-desc { padding: 12px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border); }
-                .detail-desc p { font-size: 0.8rem; line-height: 1.5; color: var(--text-secondary); margin-top: 6px; }
-                
-                .label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
-                .value { font-size: 1rem; color: var(--text-main); font-weight: 700; }
-                
-                /* Table Overhaul Enhancements */
-                .table-thumbnail-wrapper {
-                    width: 32px; height: 32px;
-                    border-radius: 6px;
-                    overflow: hidden;
-                    background: var(--bg-body);
-                    border: 1px solid var(--border);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .table-thumbnail-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-                .timestamp-text { font-size: 0.70rem; color: var(--text-muted); white-space: nowrap; }
-                
-                .pagination-footer {
-                    display: flex; justify-content: space-between; align-items: center;
-                    padding: 12px 16px;
-                    border-top: 1px solid var(--border);
-                    background: var(--bg-card);
-                    border-radius: 0 0 12px 12px;
-                }
-                .pagination-info { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
-                .pagination-controls { display: flex; gap: 8px; }
-                
-                .detail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-                .btn { padding: 6px 14px; font-size: 0.7rem; font-weight: 800; border-radius: 6px; text-transform: uppercase; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-                
-                .btn-primary { background: var(--primary); color: white; border: none; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2); }
-                .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4); }
-                
-                .btn-ghost { background: transparent; color: var(--text-main); border: 1px solid var(--border); }
-                .btn-ghost:hover { background: var(--bg-hover); border-color: var(--primary); color: var(--primary); }
-                
-                .btn-success { background: #10b981; color: #fff; border: none; }
-                .btn-success:hover { background: #059669; }
-                .btn-danger { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
-                .btn-danger:hover { background: rgba(239,68,68,0.2); }
-                
-                .container-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: var(--text-muted); text-align: center; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); padding: 40px; }
-                .container-placeholder h3 { font-size: 1rem; color: var(--text-main); margin-top: 16px; margin-bottom: 8px; }
-                .container-placeholder p { font-size: 0.8rem; max-width: 240px; }
-                
-                .animate-spin { animation: spin 1s linear infinite; }
-                @keyframes spin { to { transform: rotate(360deg); } }
-                .animate-in { animation: fadeIn 0.3s ease-out; }
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-            `}</style>
             {/* Briefing Modal */}
             <UrbanAdvisorModal 
                 isOpen={isBriefingOpen} 

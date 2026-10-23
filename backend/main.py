@@ -6,18 +6,18 @@ import csv
 from si_auth import (
     UserRegister, UserLogin, GoogleLogin, TokenResponse, UserOut,
     hash_password, verify_password, create_access_token, verify_google_token,
-    get_current_user, admin_required, ACCESS_TOKEN_EXPIRE_MINUTES,
+    get_current_user, get_current_user_optional, admin_required, ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from tracker import CentroidTracker
 from briefing_engine import generate_live_briefing
-from models import Detection, Report, User, WorkOrder, AuditLog, AdminInviteToken, EdgeMetric
+from models import Detection, Report, User, WorkOrder, AuditLog, AdminInviteToken, EdgeMetric, Notification
 from database import SessionLocal, init_db
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text, func, desc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timedelta
 from fastapi import FastAPI, UploadFile, File, Depends, Form, WebSocket, WebSocketDisconnect, HTTPException, status, Query, Request
-from typing import Any
+from typing import Any, Optional
 from contextlib import asynccontextmanager
 from dotenv import dotenv_values
 import json
@@ -25,7 +25,6 @@ import traceback
 import cv2
 import numpy as np
 from fastapi.staticfiles import StaticFiles
-from ultralytics import YOLO
 import shutil
 import os
 import random
@@ -37,12 +36,13 @@ import hashlib
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
-# ── Database ─────────────────────────────────────────────────────────────────
+# ── Constants & App Setup ─────────────────────────────────────────────────────
+
+_script_dir = os.path.dirname(os.path.abspath(__file__))
 
 DANGER_CLASSES = {"gun", "weapon", "knife", "pistol", "violence", "danger"}
 PRIVACY_CLASSES = {"person", "car", "motorcycle", "bus", "truck", "face"}
 
-app = FastAPI(title="Smart City AI API", version="2.0")
 camera_process = None
 trackers: dict[str, Any] = {}
 register_attempts: dict[str, list[float]] = {}
@@ -59,11 +59,11 @@ async def lifespan(_app: FastAPI):
     # Ensure necessary directories exist
     os.makedirs(os.path.join(_script_dir, "uploads"), exist_ok=True)
     os.makedirs(os.path.join(_script_dir, "detections"), exist_ok=True)
-
     # Keep schema up to date for security tables.
     init_db()
     yield
 
+# Single canonical FastAPI instance with lifespan
 app = FastAPI(title="Smart City AI API", version="2.0", lifespan=lifespan)
 
 # ── WebSockets ───────────────────────────────────────────────────────────────
@@ -201,20 +201,24 @@ app.add_middleware(
 )
 
 
-_script_dir = os.path.dirname(os.path.abspath(__file__))
-_pothole_model_path = os.path.join(_script_dir, "ai", "best.pt")
-model_pothole = YOLO(_pothole_model_path)
-model_general = YOLO(os.path.join(_script_dir, "ai", "yolov8n.pt"))
+# _script_dir is defined at top of file (before lifespan)
+_models_cache: dict[str, Any] = {}
 
-# Multi-class model: pothole(0) + garbage(1) + leakage(2)
-# Loaded only if best_multi.pt exists (after running train_multiclass.py)
-_multi_model_path = os.path.join(_script_dir, "ai", "best_multi.pt")
-model_multi: YOLO | None = YOLO(
-    _multi_model_path) if os.path.exists(_multi_model_path) else None
-if model_multi:
-    print(f"[MULTI-MODEL] Loaded multi-class model: {_multi_model_path}")
-else:
-    print("[MULTI-MODEL] best_multi.pt not found — garbage/leakage detection unavailable. Run ai/train_multiclass.py to enable.")
+def get_yolo_models():
+    """Lazy-load YOLO models on first demand to prevent blocking server startup and worker processes."""
+    global _models_cache
+    if "pothole" not in _models_cache:
+        from ultralytics import YOLO
+        _pothole_model_path = os.path.join(_script_dir, "ai", "best.pt")
+        _general_model_path = os.path.join(_script_dir, "ai", "yolov8n.pt")
+        _multi_model_path = os.path.join(_script_dir, "ai", "best_multi.pt")
+
+        print("[AI] Initializing YOLO models on first request...")
+        _models_cache["pothole"] = YOLO(_pothole_model_path) if os.path.exists(_pothole_model_path) else None
+        _models_cache["general"] = YOLO(_general_model_path) if os.path.exists(_general_model_path) else None
+        _models_cache["multi"] = YOLO(_multi_model_path) if os.path.exists(_multi_model_path) else None
+        print("[AI] YOLO models initialized successfully.")
+    return _models_cache["pothole"], _models_cache["general"], _models_cache["multi"]
 
 GENERAL_CLASSES = {
     0: "person",
@@ -260,15 +264,39 @@ def redact_sensitive_info(
     return img, redacted_count > 0
 
 
+# ── Stats cache: avoid hammering DB on every frontend poll ──
+_stats_cache: dict[str, Any] = {"data": None, "ts": 0.0}
+STATS_CACHE_TTL = 10  # seconds
+
+
+def _update_deterioration_scores(db: Session) -> None:
+    """Update deterioration/priority for pending reports — call sparingly, not on every GET."""
+    try:
+        pending_reports = db.query(Report).filter(Report.status == "Pending").all()
+        now = datetime.now()
+        for r in pending_reports:
+            if r.timestamp:
+                age_hours: float = (now - r.timestamp).total_seconds() / 3600
+                score: float = min(100, round(age_hours * 0.2, 1))
+                r.deterioration_score = score  # type: ignore
+                if score > 50:
+                    r.priority_level = "High"  # type: ignore
+                elif r.problem_type and "pothole" in r.problem_type.lower():
+                    r.priority_level = "Critical"  # type: ignore
+        db.commit()
+    except Exception as e:
+        print(f"[DETERIORATION] update failed: {e}")
+
+
 def _compute_stats(db: Session) -> dict[str, Any]:
-    # Optimized: Get all object counts in a single query
+    """Read-only stats query. NEVER writes to DB."""
+    # Single aggregated query for object type distribution
     obj_counts = db.query(
         Detection.object_type,
         func.count(Detection.id)
     ).group_by(Detection.object_type).all()
 
-    dist: dict[str, int] = {str(obj): count for obj,
-                            count in obj_counts if obj}
+    dist: dict[str, int] = {str(obj): count for obj, count in obj_counts if obj}
 
     total = db.query(func.count(Detection.id)).scalar() or 0
     danger = db.query(func.count(Detection.id)).filter(
@@ -282,56 +310,32 @@ def _compute_stats(db: Session) -> dict[str, Any]:
     person: int = dist.get("person", 0)
 
     now = datetime.now()
-    since_24h = now - timedelta(hours=24)
     hourly: dict[str, int] = {
         (now - timedelta(hours=i)).strftime("%H:00"): 0 for i in range(24)}
 
-    # ── MySQL COMPATIBLE FIX ──
-    # Using DATE_FORMAT instead of SQLite's strftime
-    # Removed the 24h filter so historical demo data populates the graph
+    # MySQL-compatible hourly aggregation for last 24 hours (utilizes created_at index)
+    since_24h = now - timedelta(hours=24)
     hourly_rows = db.query(
-        func.date_format(
-            Detection.created_at,
-            '%H:00'),
-        func.count(
-            Detection.id)).group_by(
-                    func.date_format(
-                        Detection.created_at,
-                        '%H:00')).all()
+        func.date_format(Detection.created_at, '%H:00'),
+        func.count(Detection.id)
+    ).filter(
+        Detection.created_at >= since_24h
+    ).group_by(
+        func.date_format(Detection.created_at, '%H:00')
+    ).all()
 
     for h_str, h_count in hourly_rows:
         if h_str in hourly:
             hourly[h_str] = h_count
 
-    # --- Balanced Rigorous Health Formula ---
-    # Potholes: -5 per (max 60) | Danger: -15 per (max 40)
+    # Health formula: potholes -5 each (max -60), danger -15 each (max -40)
     health: int = max(0, 100 - min(potholes * 5, 60) - min(danger * 15, 40))
 
-    # Advanced Research Metrics: Urban Health & Edge Efficiency
+    # Edge efficiency metrics
     edge_rows = db.execute(text(
         "SELECT AVG(inference_ms), SUM(bandwidth_saved_kb) FROM edge_metrics")).first()
-    avg_inf: float = round(
-        float(
-            edge_rows[0] or 0.0),
-        1) if edge_rows and edge_rows[0] is not None else 0.0
-    total_bw: float = round(
-        float(
-            edge_rows[1] or 0.0) / 1024,
-        2) if edge_rows and edge_rows[1] is not None else 0.0  # MB
-
-    pending_reports = db.query(Report).filter(Report.status == "Pending").all()
-    for r in pending_reports:
-        if r.timestamp:
-            time_diff = datetime.now() - r.timestamp
-            age_hours: float = time_diff.total_seconds() / 3600
-            deterioration_score: float = min(100, round(
-                age_hours * 0.2, 1))  # approx 5% per day
-            r.deterioration_score = deterioration_score  # type: ignore
-            if deterioration_score > 50:
-                r.priority_level = "High"  # type: ignore
-            elif r.problem_type and "pothole" in r.problem_type.lower():
-                r.priority_level = "Critical"  # type: ignore
-    db.commit()
+    avg_inf: float = round(float(edge_rows[0] or 0.0), 1) if edge_rows and edge_rows[0] is not None else 0.0
+    total_bw: float = round(float(edge_rows[1] or 0.0) / 1024, 2) if edge_rows and edge_rows[1] is not None else 0.0
 
     return {
         "total_detections": total,
@@ -411,15 +415,17 @@ def log_action(
 @app.get("/stats")
 def get_stats(db: Session = Depends(get_db), current_user: User = Depends(
         get_current_user)) -> dict[str, Any]:
+    now_ts = time.time()
     # Admins see global stats, users see their own
     if current_user.is_admin:
-        stats = _compute_stats(db)
+        # Use cache for admin global stats (heavy aggregation)
+        if _stats_cache["data"] is None or (now_ts - _stats_cache["ts"]) > STATS_CACHE_TTL:
+            _stats_cache["data"] = _compute_stats(db)
+            _stats_cache["ts"] = now_ts
+        stats = _stats_cache["data"]
         recent = db.query(Detection).order_by(
             Detection.created_at.desc()).limit(5).all()
     else:
-        # Filter stats logic for specific user
-        # Note: _compute_stats would need adjustment for user_id filters for a perfect implementation,
-        # but for now we filter the count/summary queries.
         stats = _compute_stats_for_user(db, current_user.id)
         recent = db.query(Detection).filter(
             Detection.user_id == current_user.id).order_by(
@@ -432,10 +438,10 @@ def get_stats(db: Session = Depends(get_db), current_user: User = Depends(
         "is_danger": r.is_danger,
         "camera_id": r.camera_id,
         "image": r.image_path,
-        # type: ignore
         "timestamp": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else None
     } for r in recent]
     return {**stats, "recent_detections": recent_serialized}
+
 
 
 def _compute_stats_for_user(db: Session, user_id: int) -> dict[str, Any]:
@@ -509,7 +515,7 @@ async def detect_anomalies(
     latitude: float = Form(default=12.9716),
     longitude: float = Form(default=77.5946),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     print(f"\n[DETECTION] Received file: {file.filename}")
 
@@ -535,40 +541,44 @@ async def detect_anomalies(
     yolo_conf = float(os.getenv("DETECTION_THRESHOLD", "0.25"))
     print(f"[DETECTION] Using confidence threshold: {yolo_conf}")
 
-    # ── Model A: Pothole-Specific Model (best.pt) ──────────────────────────
-    print("[DETECTION] Running pothole model...")
-    res_pothole = model_pothole.predict(img, conf=yolo_conf, verbose=False)
-    potholes = []
-    for r in res_pothole:
-        if r.boxes is None:
-            continue
-        print(f"[DETECTION] Pothole model found {len(r.boxes)} boxes")
-        for b in r.boxes:  # type: ignore
-            box = [int(v) for v in b.xyxy[0]]
-            conf = float(b.conf[0])
-            potholes.append(
-                {"bbox": box, "class": "pothole", "confidence": conf})
+    model_pothole, model_general, model_multi = get_yolo_models()
 
-    # ── Model B: General COCO Objects (yolov8n.pt) ─────────────────────────
-    print("[DETECTION] Running general object model...")
-    res_general = model_general.predict(img, conf=yolo_conf, verbose=False)
-    objects = []
-    for r in res_general:
-        if r.boxes is None:
-            continue
-        for b in r.boxes:  # type: ignore
-            cls_id = int(b.cls[0])
-            cls_name_temp = model_general.names.get(cls_id, "unknown")
-            print(
-                f"[DETECTION] General: class_id={cls_id} ({cls_name_temp}) conf={
-                    float(
-                        b.conf[0]):.2f}")
-            if cls_id in GENERAL_CLASSES:
-                cls_name = GENERAL_CLASSES[cls_id]
+    # ── Model A: Pothole-Specific Model (best.pt) ──────────────────────────
+    potholes = []
+    if model_pothole is not None:
+        print("[DETECTION] Running pothole model...")
+        res_pothole = model_pothole.predict(img, conf=yolo_conf, verbose=False)
+        for r in res_pothole:
+            if r.boxes is None:
+                continue
+            print(f"[DETECTION] Pothole model found {len(r.boxes)} boxes")
+            for b in r.boxes:  # type: ignore
                 box = [int(v) for v in b.xyxy[0]]
                 conf = float(b.conf[0])
-                objects.append(
-                    {"bbox": box, "class": cls_name, "confidence": conf})
+                potholes.append(
+                    {"bbox": box, "class": "pothole", "confidence": conf})
+
+    # ── Model B: General COCO Objects (yolov8n.pt) ─────────────────────────
+    objects = []
+    if model_general is not None:
+        print("[DETECTION] Running general object model...")
+        res_general = model_general.predict(img, conf=yolo_conf, verbose=False)
+        for r in res_general:
+            if r.boxes is None:
+                continue
+            for b in r.boxes:  # type: ignore
+                cls_id = int(b.cls[0])
+                cls_name_temp = model_general.names.get(cls_id, "unknown")
+                print(
+                    f"[DETECTION] General: class_id={cls_id} ({cls_name_temp}) conf={
+                        float(b.conf[0]):.2f}")
+                if cls_id in GENERAL_CLASSES:
+                    cls_name = GENERAL_CLASSES[cls_id]
+                    box = [int(v) for v in b.xyxy[0]]
+                    conf = float(b.conf[0])
+                    objects.append(
+                        {"bbox": box, "class": cls_name, "confidence": conf})
+        print(f"[DETECTION] General model found {len(objects)} relevant objects")
 
     # ── Model C: Multi-Class Infrastructure Model (best_multi.pt) ──────────
     # Detects: pothole(0), garbage(1), leakage(2)
@@ -759,8 +769,34 @@ def get_detections(db: Session = Depends(get_db), current_user: User = Depends(
 
 
 @app.get("/alerts")
-def get_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
-    # Only show danger alerts from the last 10 minutes to avoid "ghost" alerts
+def get_alerts(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+) -> list[dict[str, Any]]:
+    """Return notifications for the current user.
+    - Citizens: their personal 'work done' / status notifications.
+    - Admins / unauthenticated: recent danger detections from cameras.
+    """
+    # ── Citizen: return personal notifications ──────────────────────────────
+    if current_user and not current_user.is_admin:
+        notifs = (
+            db.query(Notification)
+            .filter(Notification.user_id == current_user.id)
+            .order_by(Notification.created_at.desc())
+            .limit(20)
+            .all()
+        )
+        return [{
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "type": n.type or "success",
+            "timestamp": n.created_at.strftime("%Y-%m-%dT%H:%M:%S") if n.created_at else None,
+            "report_id": n.report_id,
+            "is_read": n.is_read,
+        } for n in notifs]
+
+    # ── Admin / unauthenticated: return camera danger detections ─────────────
     ten_mins_ago = datetime.now() - timedelta(minutes=10)
     rows = db.query(Detection).filter(
         Detection.is_danger == 1,
@@ -769,11 +805,44 @@ def get_alerts(db: Session = Depends(get_db)) -> list[dict[str, Any]]:
 
     return [{
         "id": r.id,
-        "object_type": r.object_type or "Potential Hazard",
-        "confidence": r.confidence,
-        "camera_id": r.camera_id or "System Scanner",
-        "timestamp": r.created_at.strftime("%H:%M:%S") if r.created_at else "Now",
+        "title": f"⚠️ Danger Detected: {r.object_type or 'Potential Hazard'}",
+        "message": f"Camera {r.camera_id or 'System Scanner'} — Confidence {r.confidence:.0%}" if r.confidence else f"Camera {r.camera_id or 'System Scanner'}",
+        "type": "danger",
+        "timestamp": r.created_at.strftime("%Y-%m-%dT%H:%M:%S") if r.created_at else None,
+        "report_id": None,
+        "is_read": False,
     } for r in rows]
+
+
+@app.post("/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark a single notification as read for the current user."""
+    notif = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.user_id == current_user.id
+    ).first()
+    if notif:
+        notif.is_read = True
+        db.commit()
+    return {"status": "ok"}
+
+
+@app.post("/notifications/clear")
+def clear_all_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark all notifications as read for the current user."""
+    db.query(Notification).filter(
+        Notification.user_id == current_user.id
+    ).update({"is_read": True})
+    db.commit()
+    return {"status": "ok"}
+
 
 # ── Admin & Work Orders ─────────────────────────────────────────────────
 
@@ -1050,13 +1119,19 @@ async def create_report(
     )
     db.add(new_report)
     db.commit()
+    await notify_clients("new_report", {
+        "id": new_report.id,
+        "problem_type": report_type,
+        "location": location,
+        "user_id": current_user.id
+    })
     return {"status": "success", "id": new_report.id}
 
 
 @app.get("/reports")
 def get_reports(db: Session = Depends(get_db), current_user: User = Depends(
         get_current_user)) -> list[dict[str, Any]]:
-    query = db.query(Report)
+    query = db.query(Report).options(joinedload(Report.user))
     if not current_user.is_admin:
         query = query.filter(Report.user_id == current_user.id)
 
@@ -1072,7 +1147,12 @@ def get_reports(db: Session = Depends(get_db), current_user: User = Depends(
         # type: ignore
         "timestamp": r.timestamp.strftime("%Y-%m-%d %H:%M:%S") if r.timestamp else None,
         "image_path": r.image_path,
-        "user_id": r.user_id
+        "user_id": r.user_id,
+        "user_name": r.user.name if r.user else "Citizen Reporter",
+        "user_email": r.user.email if r.user else None,
+        "assigned_worker": r.assigned_worker,
+        "worker_notes": r.worker_notes,
+        "assigned_at": r.assigned_at.strftime("%Y-%m-%d %H:%M:%S") if r.assigned_at else None
     } for r in reports]
 
 
@@ -1081,26 +1161,117 @@ async def report_action(
         report_id: int,
         action: str = Form(...),
         note: str | None = Form(None),
+        worker: str | None = Form(None),
+        priority: str | None = Form(None),
         db: Session = Depends(get_db)):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         return {"status": "error", "message": "Report not found"}
 
-    if action == "approve":
+    problem_label = (report.problem_type or "issue").replace("_", " ").title()
+
+    if action in ["approve", "assign"]:
         report.status = "Approved"
+        if worker:
+            report.assigned_worker = worker
+            report.assigned_at = datetime.now()
+        if note:
+            report.worker_notes = note
+        if priority:
+            report.priority_level = priority
+        # Notify the citizen that a worker has been dispatched
+        if report.user_id:
+            worker_name = worker or report.assigned_worker or "our maintenance team"
+            db.add(Notification(
+                user_id=report.user_id,
+                title=f"👷 Worker Dispatched – {problem_label}",
+                message=(
+                    f"Good news! A field worker ({worker_name}) has been assigned to your "
+                    f"reported issue #{report.id} at {report.location}."
+                    + (f" Instructions: {note}" if note else "")
+                ),
+                type="info",
+                report_id=report.id,
+            ))
+
     elif action == "resolve":
         report.status = "Resolved"
         if note:
             # Safely append the note to the description field
             existing_desc = report.description or ""
             report.description = f"{existing_desc}\n\n✓ ADMIN RESOLUTION NOTE:\n{note}"
+        # Notify the citizen that their issue has been resolved
+        if report.user_id:
+            db.add(Notification(
+                user_id=report.user_id,
+                title=f"✅ Work Done – {problem_label} Resolved!",
+                message=(
+                    f"Your reported issue #{report.id} at {report.location} has been "
+                    f"successfully resolved by the maintenance team."
+                    + (f" Resolution note: {note}" if note else "")
+                ),
+                type="success",
+                report_id=report.id,
+            ))
+
     elif action == "delete":
         db.delete(report)
 
     db.commit()
     # Log the action (Audit)
-    log_action(db, 0, f"Managed report: {action}", "reports", report_id)
-    return {"status": "success"}
+    log_action(db, 0, f"Managed report: {action} (worker={worker})", "reports", report_id)
+    return {
+        "status": "success",
+        "assigned_worker": report.assigned_worker if action != "delete" else None
+    }
+
+
+@app.post("/reports/{report_id}/assign")
+async def assign_worker_to_report(
+    report_id: int,
+    worker_name: str = Form(...),
+    notes: str | None = Form(None),
+    priority: str | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin permissions required")
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    report.status = "Approved"
+    report.assigned_worker = worker_name
+    report.worker_notes = notes
+    report.assigned_at = datetime.now()
+    if priority:
+        report.priority_level = priority
+
+    # Notify the citizen that a worker has been dispatched
+    if report.user_id:
+        problem_label = (report.problem_type or "issue").replace("_", " ").title()
+        db.add(Notification(
+            user_id=report.user_id,
+            title=f"👷 Worker Dispatched – {problem_label}",
+            message=(
+                f"Field worker '{worker_name}' has been assigned to your reported issue "
+                f"#{report.id} at {report.location}."
+                + (f" Notes: {notes}" if notes else "")
+            ),
+            type="info",
+            report_id=report.id,
+        ))
+
+    db.commit()
+    log_action(db, current_user.id, f"Assigned worker '{worker_name}' to report #{report_id} at {report.location}", "reports", report_id)
+    return {
+        "status": "success",
+        "message": f"Worker '{worker_name}' assigned to report #{report_id}",
+        "report_id": report_id,
+        "assigned_worker": report.assigned_worker,
+        "assigned_at": report.assigned_at.strftime("%Y-%m-%d %H:%M:%S") if report.assigned_at else None
+    }
 
 
 @app.post("/analytics/edge")

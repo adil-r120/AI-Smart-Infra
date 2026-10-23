@@ -15,6 +15,9 @@ export interface DetectionResult {
     image_url: string;
     potholes: Detection[];
     objects: Detection[];
+    infra_detections?: Detection[];
+    is_redacted?: boolean;
+    multi_model_active?: boolean;
 }
 
 // ── Row from /detections or /map-data ───────────────────────────────────────
@@ -74,6 +77,14 @@ export interface Report {
     status: string;
     timestamp: string;
     image_path?: string | null;
+    priority_level?: string;
+    deterioration_score?: number;
+    user_id?: number;
+    user_name?: string;
+    user_email?: string;
+    assigned_worker?: string | null;
+    worker_notes?: string | null;
+    assigned_at?: string | null;
 }
 
 export interface AuditLogEntry {

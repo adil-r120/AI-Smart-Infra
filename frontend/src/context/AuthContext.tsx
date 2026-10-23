@@ -26,42 +26,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Don't re-run if already initialized (e.g., after login navigation)
         if (initialized) return;
-        
+
         const stored = localStorage.getItem("si_token");
-        if (!stored) { 
-            setLoading(false); 
+        if (!stored) {
+            setLoading(false);
             setInitialized(true);
-            return; 
+            return;
         }
-        
+
         let mounted = true;
-        
+
         fetch(`${API_BASE}/auth/me`, {
             headers: { Authorization: `Bearer ${stored}` },
         })
             .then(r => r.ok ? r.json() : null)
-            .then(data => { 
+            .then(data => {
                 if (mounted) {
-                    if (data) { 
-                        setUser(data); 
-                        setToken(stored); 
-                    } else { 
-                        localStorage.removeItem("si_token"); 
-                        setToken(null); 
+                    if (data) {
+                        setUser(data);
+                        setToken(stored);
+                    } else {
+                        localStorage.removeItem("si_token");
+                        setToken(null);
                     }
                     setLoading(false);
                     setInitialized(true);
                 }
             })
-            .catch(() => { 
+            .catch(() => {
                 if (mounted) {
-                    localStorage.removeItem("si_token"); 
+                    localStorage.removeItem("si_token");
                     setToken(null);
                     setLoading(false);
                     setInitialized(true);
                 }
             });
-        
+
         return () => { mounted = false; };
     }, [initialized]);
 

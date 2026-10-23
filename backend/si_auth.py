@@ -137,3 +137,18 @@ def admin_required(current_user: User = Depends(get_current_user)) -> User:
             detail="Admin privileges required."
         )
     return current_user
+
+def get_current_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if not email:
+            return None
+        return db.query(User).filter(User.email == email, User.is_active == True).first()
+    except Exception:
+        return None

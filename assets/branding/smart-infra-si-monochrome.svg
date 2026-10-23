@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Monochrome S+I Monogram Specimen for Trademark Filing -->
+  <g transform="translate(18, -12)">
+    <!-- Letter 'S' -->
+    <path d="M 270 120
+             L 165 120
+             C 115 120, 80 155, 80 205
+             C 80 255, 120 280, 185 295
+             L 245 310
+             C 275 318, 290 335, 290 355
+             C 290 380, 265 400, 220 400
+             L 110 400
+             L 110 360
+             L 215 360
+             C 235 360, 248 350, 248 335
+             C 248 315, 220 300, 160 285
+             L 115 275
+             C 65 260, 38 230, 38 185
+             C 38 135, 80 95, 145 95
+             L 270 95
+             Z"
+          fill="#000000" />
+
+    <!-- Letter 'I' Dot -->
+    <circle cx="370" cy="115" r="22" fill="#000000" />
+    
+    <!-- Vertical Pillar of I -->
+    <rect x="348" y="155" width="44" height="245" rx="14" fill="#000000" />
+
+    <!-- Connecting Link -->
+    <rect x="250" y="240" width="105" height="12" rx="6" fill="#000000" />
+  </g>
+
+  <!-- Wordmark Text -->
+  <text x="256" y="450" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" 
+        font-size="28" 
+        font-weight="800" 
+        letter-spacing="5" 
+        fill="#000000" 
+        text-anchor="middle">
+    SMART-INFRA
+  </text>
+</svg>

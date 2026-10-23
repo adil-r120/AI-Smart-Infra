@@ -19,6 +19,7 @@ class User(Base):
     detections = relationship("Detection", back_populates="user", cascade="all, delete-orphan")
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
     work_orders = relationship("WorkOrder", back_populates="assigned_user")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 class Detection(Base):
     __tablename__ = "detections"
@@ -68,6 +69,9 @@ class Report(Base):
     timestamp = Column(DateTime, server_default=func.now(), index=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), index=True)
+    assigned_worker = Column(String(100), nullable=True)
+    worker_notes = Column(Text, nullable=True)
+    assigned_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="reports")
 
@@ -104,3 +108,16 @@ class AdminInviteToken(Base):
     expires_at = Column(DateTime, index=True, nullable=False)
     used_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), index=True)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), index=True)
+    title = Column(String(150), nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String(30), default="success")
+    report_id = Column(Integer, nullable=True)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now(), index=True)
+
+    user = relationship("User", back_populates="notifications")

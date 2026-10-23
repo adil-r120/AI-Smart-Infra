@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sun, Moon, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Clock } from "lucide-react";
+import { Sun, Moon, Cloud, CloudRain, Snowflake, CloudLightning, Wind } from "lucide-react";
 
 interface LogoProps {
     size?: "small" | "medium" | "large";
@@ -18,15 +18,69 @@ const Logo: React.FC<LogoProps> = ({
 
     const { icon, text } = sizeMap[size];
 
+    // ── Real-time weather state ──────────────────────────────────────────────
+    const [weather, setWeather] = useState<{
+        temp: number | null;
+        condition: string;
+        WeatherIcon: any;
+    }>({ temp: null, condition: "Clear", WeatherIcon: Sun });
+
+    useEffect(() => {
+        const fetchWeather = async (lat: number, lon: number) => {
+            try {
+                const res = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&timezone=auto`
+                );
+                const data = await res.json();
+                const code: number = data.current.weather_code;
+                const isDay: boolean = data.current.is_day === 1;
+                const temp: number = Math.round(data.current.temperature_2m);
+
+                let condition = "Clear";
+                let WeatherIcon: any = isDay ? Sun : Moon;
+                if (code <= 1) { condition = "Clear"; WeatherIcon = isDay ? Sun : Moon; }
+                else if (code <= 3) { condition = "Cloudy"; WeatherIcon = Cloud; }
+                else if (code <= 49) { condition = "Foggy"; WeatherIcon = Wind; }
+                else if (code <= 69) { condition = "Rainy"; WeatherIcon = CloudRain; }
+                else if (code <= 79) { condition = "Snow"; WeatherIcon = Snowflake; }
+                else if (code <= 99) { condition = "Storm"; WeatherIcon = CloudLightning; }
+
+                setWeather({ temp, condition, WeatherIcon });
+            } catch {
+                // silently fail — badge just won't show
+            }
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+                () => fetchWeather(28.6139, 77.2090)   // default: New Delhi
+            );
+        } else {
+            fetchWeather(28.6139, 77.2090);
+        }
+    }, []);
+
+    const WeatherIcon = weather.WeatherIcon;
+
     return (
         <div className="logo-container" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div className="logo-icon-wrapper">
-                <img src="/favicon.png" alt="Smart Infra Logo" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "10px" }} />
+                <img src="/smart-infra-logo.svg" alt="Smart Infra Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
             </div>
             {showText && (
                 <div className="logo-text" style={{ fontSize: text, display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span className="logo-main">AI Smart</span>
                     <span className="logo-accent">Infra</span>
+                </div>
+            )}
+
+            {/* Live weather badge — always visible in header */}
+            {weather.temp !== null && (
+                <div className="logo-weather-badge" title={`${weather.condition} — live local weather`}>
+                    <WeatherIcon size={12} />
+                    <span>{weather.temp}°C</span>
+                    <span style={{ opacity: 0.7 }}>{weather.condition}</span>
                 </div>
             )}
 
@@ -71,20 +125,23 @@ const Logo: React.FC<LogoProps> = ({
                     display: flex;
                     align-items: center;
                     gap: 6px;
-                    margin-left: 10px;
+                    margin-left: 4px;
                     padding: 5px 12px;
                     background: var(--bg-surface);
                     border: 1px solid var(--border);
                     border-radius: 99px;
-                    font-size: 0.6em;
-                    font-weight: 800;
+                    font-size: 0.72rem;
+                    font-weight: 700;
                     color: var(--text-muted);
                     transition: all 0.3s;
+                    cursor: default;
+                    white-space: nowrap;
                 }
 
                 .logo-weather-badge:hover {
                     color: var(--text-main);
                     border-color: var(--primary);
+                    background: var(--primary-glow);
                 }
 
                 @media (max-width: 768px) {
@@ -92,7 +149,7 @@ const Logo: React.FC<LogoProps> = ({
                         font-size: ${parseInt(text) * 0.8}rem !important;
                     }
                     .logo-weather-badge {
-                        display: none; /* Hide on very small screens to save header space */
+                        display: none;
                     }
                 }
             `}</style>
