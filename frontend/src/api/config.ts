@@ -1,3 +1,9 @@
-// Use 127.0.0.1 (not "localhost") so it matches Vite's host and avoids Windows
-// resolving localhost to ::1 while uvicorn listens on IPv4-only 127.0.0.1.
-export const API_BASE = "http://127.0.0.1:8000";
+// In development with Vite, defaults to http://127.0.0.1:8000.
+// In containerized/Nginx environments (PROD), defaults to "" (same-origin)
+// so requests are proxied via Nginx without cross-origin issues or port exposure.
+export const API_BASE =
+  import.meta.env.VITE_API_BASE !== undefined
+    ? import.meta.env.VITE_API_BASE
+    : import.meta.env.PROD
+    ? ""
+    : "http://127.0.0.1:8000";

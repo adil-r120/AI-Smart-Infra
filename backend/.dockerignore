@@ -1,0 +1,13 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+uploads/*
+!uploads/.gitkeep
+detections/*
+logs/*
+*.sqlite3
+*.db

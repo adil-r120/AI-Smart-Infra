@@ -31,6 +31,14 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- DATABASE ARTIFACTS ---
+# Exclude local SQLite and database file exports
+*.db
+*.sqlite
+*.sqlite3
 
 # --- FRONTEND / NODE & VITE ---
 # Exclude Node dependencies, production builds, and diagnostic logs
@@ -49,9 +57,12 @@ pnpm-debug.log*
 
 # --- APPLICATION DATA & AI INGESTION ---
 # Exclude runtime temporary logs, uploads, and AI inference output frames
-backend/detections/*.jpg
-backend/uploads/*.jpg
-backend/logs/*.log
+backend/detections/*
+!backend/detections/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/logs/*
+!backend/logs/.gitkeep
 backend/ai/*.log
 backend/ai/vid_debug.log
 

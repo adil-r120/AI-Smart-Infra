@@ -102,7 +102,9 @@ const MyReports: React.FC<{ onReportNew: () => void }> = ({ onReportNew }) => {
     useEffect(() => {
         fetchReports();
         const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws`;
+        const isDev = window.location.port === "5173" || window.location.port === "5174";
+        const wsHost = isDev ? `${window.location.hostname}:8000` : window.location.host;
+        const wsUrl = `${wsProtocol}//${wsHost}/ws`;
         const socket = new WebSocket(wsUrl);
 
         socket.onopen = () => setWsConnected(true);

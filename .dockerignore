@@ -1,0 +1,26 @@
+# Ignore virtual environments, git, and local temporary files
+**/venv/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.git
+**/.github
+**/.agent/
+**/.agents/
+**/.gemini/
+**/.gsd/
+
+# Ignore local node_modules and build artifacts
+**/node_modules/
+**/dist/
+**/.npm
+
+# Ignore local database and upload files from build context
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/detections/*
+backend/logs/*
+backend/*.db
+backend/*.sqlite3

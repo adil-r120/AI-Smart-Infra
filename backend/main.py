@@ -534,9 +534,7 @@ async def detect_anomalies(
         print("[DETECTION ERROR] Failed to read image")
         return {"error": "Invalid image"}
 
-    print(
-        f"[DETECTION] Image shape: {
-            img.shape}, GPS: ({latitude}, {longitude})")
+    print(f"[DETECTION] Image shape: {img.shape}, GPS: ({latitude}, {longitude})")
 
     yolo_conf = float(os.getenv("DETECTION_THRESHOLD", "0.25"))
     print(f"[DETECTION] Using confidence threshold: {yolo_conf}")
@@ -569,9 +567,7 @@ async def detect_anomalies(
             for b in r.boxes:  # type: ignore
                 cls_id = int(b.cls[0])
                 cls_name_temp = model_general.names.get(cls_id, "unknown")
-                print(
-                    f"[DETECTION] General: class_id={cls_id} ({cls_name_temp}) conf={
-                        float(b.conf[0]):.2f}")
+                print(f"[DETECTION] General: class_id={cls_id} ({cls_name_temp}) conf={float(b.conf[0]):.2f}")
                 if cls_id in GENERAL_CLASSES:
                     cls_name = GENERAL_CLASSES[cls_id]
                     box = [int(v) for v in b.xyxy[0]]
@@ -607,11 +603,7 @@ async def detect_anomalies(
         print(
             "[DETECTION] Multi-class model not loaded — skipping garbage/leakage detection")
 
-    print(
-        f"[DETECTION] Totals — Potholes: {
-            len(potholes)}, Objects: {
-            len(objects)}, Infra: {
-                len(infra_detections)}")
+    print(f"[DETECTION] Totals — Potholes: {len(potholes)}, Objects: {len(objects)}, Infra: {len(infra_detections)}")
 
     # ── Privacy Redaction ──────────────────────────────────────────────────
     all_dets = objects + potholes + infra_detections
@@ -870,13 +862,7 @@ def toggle_user_role(
 
     user.is_admin = not user.is_admin
     db.commit()
-    log_action(
-        db,
-        current_admin.id,
-        f"Toggled admin status to {
-            user.is_admin}",
-        "users",
-        user.id)
+    log_action(db, current_admin.id, f"Toggled admin status to {user.is_admin}", "users", user.id)
     return {"status": "success", "is_admin": user.is_admin}
 
 
@@ -1102,9 +1088,8 @@ async def create_report(
 ):
     img_name = None
     if image:
-        img_name = f"report_{
-            datetime.now().strftime('%Y%m%d_%H%M%S')}_{
-            image.filename}"
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        img_name = f"report_{timestamp_str}_{image.filename}"
         with open(os.path.join(_uploads_dir, img_name), "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
 
@@ -1314,10 +1299,7 @@ def get_urban_health(db: Session = Depends(get_db)):
     return {
         "score": score,
         "status": "Healthy" if score > 80 else "Attention Required" if score > 50 else "Critical",
-        "efficiency_rate": f"{
-            round(
-                efficiency,
-                1)}%",
+        "efficiency_rate": f"{round(efficiency, 1)}%",
         "active_hazards": total - resolved}
 
 
@@ -1461,40 +1443,30 @@ def register(
             invite_row = db.query(AdminInviteToken).filter(
                 AdminInviteToken.token_hash == invite_hash).first()
             if not invite_row:
-                log_security_event(
-                    db, f"Invalid admin invite token from {client_ip} ({
-                        body.email})")
+                log_security_event(db, f"Invalid admin invite token from {client_ip} ({body.email})")
                 raise HTTPException(
                     status_code=403,
                     detail="Invalid admin invite token")
             # Check if invite token has been used
             if invite_row.used_at:  # SQLAlchemy Column comparison
-                log_security_event(
-                    db, f"Reused admin invite token from {client_ip} ({
-                        body.email})")
+                log_security_event(db, f"Reused admin invite token from {client_ip} ({body.email})")
                 raise HTTPException(
                     status_code=403,
                     detail="Admin invite token has already been used")
             if invite_row.expires_at < datetime.now():
-                log_security_event(
-                    db, f"Expired admin invite token from {client_ip} ({
-                        body.email})")
+                log_security_event(db, f"Expired admin invite token from {client_ip} ({body.email})")
                 raise HTTPException(
                     status_code=403,
                     detail="Admin invite token has expired")
         else:
             if not configured_admin_code:
-                log_security_event(
-                    db, f"Blocked admin signup without configured code from {client_ip} ({
-                        body.email})")
+                log_security_event(db, f"Blocked admin signup without configured code from {client_ip} ({body.email})")
                 raise HTTPException(
                     status_code=403,
                     detail="Admin signup is disabled")
             if not provided_admin_code or not secrets.compare_digest(
                     provided_admin_code, configured_admin_code):
-                log_security_event(
-                    db, f"Invalid admin signup code from {client_ip} ({
-                        body.email})")
+                log_security_event(db, f"Invalid admin signup code from {client_ip} ({body.email})")
                 raise HTTPException(
                     status_code=403,
                     detail="Invalid admin signup code")
