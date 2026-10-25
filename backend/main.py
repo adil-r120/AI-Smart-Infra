@@ -1139,6 +1139,7 @@ async def create_report(
     description: str = Form(...),
     location: str = Form(...),
     image: UploadFile = File(None),
+    priority_level: str = Form("Medium"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1155,6 +1156,7 @@ async def create_report(
         location=location,
         image_path=img_name,
         status="Pending",
+        priority_level=priority_level,
         timestamp=datetime.now(),
         user_id=current_user.id
     )
@@ -1164,6 +1166,7 @@ async def create_report(
         "id": new_report.id,
         "problem_type": report_type,
         "location": location,
+        "priority_level": priority_level,
         "user_id": current_user.id
     })
     return {"status": "success", "id": new_report.id}

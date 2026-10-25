@@ -2,8 +2,10 @@ import React, { useEffect, useState, useRef } from "react";
 import { 
     Upload, RefreshCcw, Database, ShieldAlert, Download, 
     Eye, EyeOff, AlertTriangle, CheckCircle2, Cpu, Zap, 
-    Image as ImageIcon, Layers, FileText, Activity, ShieldCheck, Sparkles, X
+    Image as ImageIcon, Layers, FileText, Activity, ShieldCheck, Sparkles, X,
+    Send, MapPin, Loader2, CheckCircle
 } from "lucide-react";
+import axios from "axios";
 import { Detection, DetectionResult } from "../types";
 import { API_BASE } from "../api/config";
 import "./AiScanner.css";
@@ -14,6 +16,7 @@ interface AiScannerProps {
     scannerStatus: string | null;
     isDragging: boolean;
     preview: string | null;
+    file?: File | null;
     fileInputRef: React.RefObject<HTMLInputElement>;
     imageRef: React.RefObject<HTMLImageElement>;
     canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -80,7 +83,7 @@ const SAMPLE_ROADWAYS = [
 ];
 
 function AiScanner({
-    result, loading, scannerStatus, isDragging, preview,
+    result, loading, scannerStatus, isDragging, preview, file,
     fileInputRef, imageRef, canvasRef,
     onFileChange, handleDragOver, handleDragLeave, handleDrop,
     drawDetections, resetScanner, onDetectionsChange, onSelectSample
@@ -90,6 +93,17 @@ function AiScanner({
     const [filterCategory, setFilterCategory] = useState<"all" | "potholes" | "hazards" | "traffic">("all");
     const [previewError, setPreviewError] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Reporting to Admin states
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [reportCategory, setReportCategory] = useState("pothole");
+    const [reportPriority, setReportPriority] = useState<"Low" | "Medium" | "High" | "Critical">("High");
+    const [reportLocation, setReportLocation] = useState("12.9716, 77.5946");
+    const [reportDescription, setReportDescription] = useState("");
+    const [submittingReport, setSubmittingReport] = useState(false);
+    const [reportSuccess, setReportSuccess] = useState<string | null>(null);
+    const [reportError, setReportError] = useState<string | null>(null);
+    const [locatingGps, setLocatingGps] = useState(false);
 
     useEffect(() => {
         setPreviewError(false);
@@ -206,6 +220,119 @@ function AiScanner({
         scannerStatus.toLowerCase().includes("fail") ||
         scannerStatus.toLowerCase().includes("too large")
     );
+
+    const handleOpenReportModal = () => {
+        // Auto-determine category
+        let defaultCat = "structural";
+        if (potholeCount > 0) defaultCat = "pothole";
+        else if (infraHazardCount > 0) defaultCat = "road_hazard";
+        else if (vehicleCount > 0) defaultCat = "traffic";
+        setReportCategory(defaultCat);
+
+        // Auto-determine priority
+        let defaultPriority: "Low" | "Medium" | "High" | "Critical" = "Medium";
+        if (potholeCount > 2 || allDetections.some(d => d.confidence > 0.85)) {
+            defaultPriority = "Critical";
+        } else if (potholeCount > 0 || infraHazardCount > 1) {
+            defaultPriority = "High";
+        }
+        setReportPriority(defaultPriority);
+
+        // Auto-generate detailed description based on neural findings
+        const findings: string[] = [];
+        if (potholeCount > 0) findings.push(`${potholeCount} pothole(s) detected`);
+        if (infraHazardCount > 0) findings.push(`${infraHazardCount} road hazard(s)/crack(s) detected`);
+        if (vehicleCount > 0) findings.push(`${vehicleCount} vehicle(s) observed in area`);
+        const findingsSummary = findings.length > 0 ? findings.join(", ") : "Infrastructure anomaly detected by AI scan";
+        
+        setReportDescription(`Automated AI Scan Report: ${findingsSummary}. Requesting field crew assessment and repair dispatch.`);
+        setReportError(null);
+        setReportSuccess(null);
+        setShowReportModal(true);
+
+        // Try getting live GPS coordinates automatically
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setReportLocation(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
+                },
+                () => {},
+                { timeout: 5000 }
+            );
+        }
+    };
+
+    const handleGetGpsLocation = () => {
+        if (!navigator.geolocation) {
+            setReportError("Geolocation is not supported by this browser.");
+            return;
+        }
+        setLocatingGps(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setReportLocation(`${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`);
+                setLocatingGps(false);
+            },
+            (err) => {
+                console.warn("GPS error:", err);
+                setLocatingGps(false);
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    };
+
+    const handleSubmitReport = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubmittingReport(true);
+        setReportError(null);
+        setReportSuccess(null);
+
+        try {
+            const token = localStorage.getItem("si_token");
+            const formData = new FormData();
+
+            // Image handling: Use file prop or extract from preview/canvas
+            let fileToSend: File | null = file || null;
+            if (!fileToSend && preview) {
+                try {
+                    const res = await fetch(preview);
+                    const blob = await res.blob();
+                    fileToSend = new File([blob], `ai_scan_${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+                } catch (e) {
+                    console.warn("Could not convert preview to File", e);
+                }
+            }
+
+            if (fileToSend) {
+                formData.append("image", fileToSend);
+            }
+            formData.append("report_type", reportCategory);
+            formData.append("description", reportDescription.trim() || `AI Scan Detected: ${reportCategory}`);
+            formData.append("location", reportLocation.trim() || "Smart City Grid");
+            formData.append("priority_level", reportPriority);
+
+            const res = await axios.post(`${API_BASE}/report`, formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                timeout: 30000
+            });
+
+            const ticketId = res.data?.id ? `#TKT-${res.data.id}` : `#TKT-${Math.floor(1000 + Math.random() * 9000)}`;
+            setReportSuccess(`Report successfully sent to Admin! Ticket ${ticketId} created.`);
+            setTimeout(() => {
+                setShowReportModal(false);
+                setReportSuccess(null);
+            }, 2500);
+        } catch (err: any) {
+            console.error("Report submit error:", err);
+            const msg = err.response?.data?.detail || err.message || "Failed to submit report to Admin";
+            setReportError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        } finally {
+            setSubmittingReport(false);
+        }
+    };
 
     return (
         <section className="aiscanner-root" ref={containerRef}>
@@ -597,6 +724,13 @@ function AiScanner({
                         {/* Action Buttons Row */}
                         <div className="aiscanner-actions-row">
                             <button 
+                                className="aiscanner-btn-report-admin" 
+                                onClick={handleOpenReportModal}
+                                title="Transmit detected issue directly to City Admin & Maintenance Dispatch"
+                            >
+                                <Send size={15} /> Send Issue to Admin
+                            </button>
+                            <button 
                                 className="aiscanner-btn-primary" 
                                 onClick={resetScanner}
                             >
@@ -610,6 +744,177 @@ function AiScanner({
                                 <Download size={15} /> Export PNG
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── SEND ISSUE TO ADMIN MODAL ── */}
+            {showReportModal && (
+                <div className="aiscanner-modal-backdrop" onClick={() => !submittingReport && setShowReportModal(false)}>
+                    <div className="aiscanner-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="aiscanner-modal-header">
+                            <div className="aiscanner-modal-title-group">
+                                <div className="aiscanner-modal-icon-badge">
+                                    <ShieldAlert size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="aiscanner-modal-title">Send Issue to Admin</h3>
+                                    <p className="aiscanner-modal-subtitle">Transmits AI scan findings and evidence to Municipal Admin &amp; Work Orders</p>
+                                </div>
+                            </div>
+                            <button 
+                                className="aiscanner-modal-close"
+                                onClick={() => !submittingReport && setShowReportModal(false)}
+                                title="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {reportSuccess ? (
+                            <div className="aiscanner-modal-success-card">
+                                <CheckCircle size={44} className="text-emerald" />
+                                <h4>Issue Transmitted to Admin Console</h4>
+                                <p>{reportSuccess}</p>
+                                <p className="aiscanner-modal-success-hint">Admin personnel have been notified. Work order generation is pending.</p>
+                                <button 
+                                    className="aiscanner-btn-primary"
+                                    onClick={() => setShowReportModal(false)}
+                                    style={{ marginTop: 12 }}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSubmitReport}>
+                                <div className="aiscanner-modal-body">
+                                    {reportError && (
+                                        <div className="aiscanner-error-alert" style={{ margin: 0 }}>
+                                            <AlertTriangle size={16} />
+                                            <span>{reportError}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Scan Highlights Banner */}
+                                    <div className="aiscanner-modal-highlights">
+                                        <div className="aiscanner-modal-highlight-item">
+                                            <span className="label">⚠️ Potholes</span>
+                                            <span className="val">{potholeCount}</span>
+                                        </div>
+                                        <div className="aiscanner-modal-highlight-item">
+                                            <span className="label">💧 Hazards</span>
+                                            <span className="val">{infraHazardCount}</span>
+                                        </div>
+                                        <div className="aiscanner-modal-highlight-item">
+                                            <span className="label">🚗 Traffic</span>
+                                            <span className="val">{vehicleCount + peopleCount}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Category Select */}
+                                    <div className="aiscanner-modal-form-group">
+                                        <label className="aiscanner-modal-label">Issue Category</label>
+                                        <select 
+                                            className="aiscanner-modal-select"
+                                            value={reportCategory}
+                                            onChange={(e) => setReportCategory(e.target.value)}
+                                            required
+                                        >
+                                            <option value="pothole">Pothole / Road Surface Crater</option>
+                                            <option value="crack">Pavement &amp; Asphalt Cracks</option>
+                                            <option value="road_hazard">Road Hazard / Obstruction</option>
+                                            <option value="leakage">Water / Sewer Leakage</option>
+                                            <option value="garbage">Garbage / Waste Overflow</option>
+                                            <option value="traffic">Traffic Bottleneck / Congestion</option>
+                                            <option value="structural">General Structural Damage</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Severity / Priority */}
+                                    <div className="aiscanner-modal-form-group">
+                                        <label className="aiscanner-modal-label">Severity Level</label>
+                                        <div className="aiscanner-modal-priority-strip">
+                                            {(["Low", "Medium", "High", "Critical"] as const).map(p => (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    className={`aiscanner-modal-priority-btn priority-${p.toLowerCase()} ${reportPriority === p ? "active" : ""}`}
+                                                    onClick={() => setReportPriority(p)}
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Location */}
+                                    <div className="aiscanner-modal-form-group">
+                                        <label className="aiscanner-modal-label">Location / GPS Coordinates</label>
+                                        <div className="aiscanner-modal-loc-row">
+                                            <input 
+                                                type="text" 
+                                                className="aiscanner-modal-input"
+                                                value={reportLocation}
+                                                onChange={(e) => setReportLocation(e.target.value)}
+                                                placeholder="e.g. 12.9716, 77.5946 or Brigade Road, Bangalore"
+                                                required
+                                            />
+                                            <button 
+                                                type="button"
+                                                className="aiscanner-modal-loc-btn"
+                                                onClick={handleGetGpsLocation}
+                                                disabled={locatingGps}
+                                                title="Detect current GPS coordinates"
+                                            >
+                                                {locatingGps ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                                                <span>{locatingGps ? "Locating..." : "GPS"}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Description */}
+                                    <div className="aiscanner-modal-form-group">
+                                        <label className="aiscanner-modal-label">Description &amp; Maintenance Notes</label>
+                                        <textarea 
+                                            className="aiscanner-modal-textarea"
+                                            value={reportDescription}
+                                            onChange={(e) => setReportDescription(e.target.value)}
+                                            placeholder="Provide details about the defect, road urgency, or repair crew notes..."
+                                            rows={3}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="aiscanner-modal-footer">
+                                    <button 
+                                        type="button"
+                                        className="aiscanner-btn-secondary"
+                                        onClick={() => setShowReportModal(false)}
+                                        disabled={submittingReport}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        className="aiscanner-btn-report-admin"
+                                        disabled={submittingReport}
+                                    >
+                                        {submittingReport ? (
+                                            <>
+                                                <Loader2 size={15} className="animate-spin" />
+                                                <span>Transmitting...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send size={15} />
+                                                <span>Transmit to Admin</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

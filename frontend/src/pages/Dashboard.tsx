@@ -905,6 +905,7 @@ const Dashboard: React.FC = () => {
             scannerStatus={scannerStatus}
             isDragging={isDragging}
             preview={preview}
+            file={file}
             fileInputRef={fileInputRef}
             imageRef={imageRef}
             canvasRef={canvasRef}
