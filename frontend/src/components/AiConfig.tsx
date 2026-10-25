@@ -202,7 +202,7 @@ export default function AiConfig({
                     <input
                       type="text"
                       className="aiconfig-input-text"
-                      defaultValue="AI Smart Infra"
+                      defaultValue="Smart-Infra AI"
                       placeholder="Project Name"
                     />
                   </div>

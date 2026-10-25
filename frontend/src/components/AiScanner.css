@@ -889,3 +889,46 @@
     color: var(--primary);
     transform: translateY(-2px);
 }
+
+/* ── Scanning Frame Active Viewport ── */
+.aiscanner-loading-container {
+    width: 100%;
+}
+
+.aiscanner-scanning-frame {
+    position: relative;
+    max-height: 540px;
+    box-shadow: 0 0 35px rgba(249, 115, 22, 0.25), inset 0 0 60px rgba(0, 0, 0, 0.7);
+}
+
+.aiscanner-scanning-hud-banner {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 15, 29, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(249, 115, 22, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(249, 115, 22, 0.2);
+    border-radius: 16px;
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.aiscanner-scanning-hud-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+    color: #fff;
+    text-transform: uppercase;
+}
+

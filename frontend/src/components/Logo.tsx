@@ -11,12 +11,12 @@ const Logo: React.FC<LogoProps> = ({
     showText = true
 }) => {
     const sizeMap = {
-        small: { icon: 24, text: "1rem" },
-        medium: { icon: 32, text: "1.25rem" },
-        large: { icon: 40, text: "1.5rem" }
+        small: { icon: 28, text: "1.05rem", wrapper: 38 },
+        medium: { icon: 36, text: "1.32rem", wrapper: 46 },
+        large: { icon: 48, text: "1.6rem", wrapper: 58 }
     };
 
-    const { icon, text } = sizeMap[size];
+    const { text, wrapper } = sizeMap[size];
 
     // ── Real-time weather state ──────────────────────────────────────────────
     const [weather, setWeather] = useState<{
@@ -66,12 +66,12 @@ const Logo: React.FC<LogoProps> = ({
     return (
         <div className="logo-container" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div className="logo-icon-wrapper">
-                <img src="/smart-infra-logo.svg" alt="Smart Infra Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                <img src="/smart-infra-logo-v1.jpg" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
             </div>
             {showText && (
                 <div className="logo-text" style={{ fontSize: text, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span className="logo-main">AI Smart</span>
-                    <span className="logo-accent">Infra</span>
+                    <span className="logo-main">Smart-Infra</span>
+                    <span className="logo-accent">AI</span>
                 </div>
             )}
 
@@ -92,14 +92,17 @@ const Logo: React.FC<LogoProps> = ({
                 }
 
                 .logo-icon-wrapper {
-                    width: ${icon + 8}px;
-                    height: ${icon + 8}px;
+                    width: ${wrapper}px;
+                    height: ${wrapper}px;
                     border-radius: 12px;
-                    background: transparent;
+                    background: #0a0f1e;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     overflow: hidden;
+                    flex-shrink: 0;
                 }
 
                 .logo-text {

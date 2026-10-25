@@ -14,6 +14,8 @@ import AdminConsole from "../components/AdminConsole";
 import ReportIssue from "./ReportIssue";
 import IntelligenceHub from "../components/IntelligenceHub";
 import MyReports from "../components/MyReports";
+import EditorialHome from "../components/EditorialHome";
+import UrbanAdvisorChat from "../components/UrbanAdvisorChat";
 import { Detection, DetectionResult, DBEntry, Stats } from "../types";
 import { AlertTriangle, X, Activity, Camera, Database, Sun, Moon, RefreshCw, ShieldAlert, Scan, Download, Eye, Crosshair, Radio, Zap, Maximize, Minimize, Trash2, WifiOff, Shield, Bell, Video, Play, Pause, Layers, Menu, Check, Upload, Settings, User as UserIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -136,26 +138,26 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState(() => {
         const saved = localStorage.getItem("si_active_tab");
-        const validTabs = ["Home", "Scanner", "Map", "History", "Admin", "Report", "MyReports", "Configuration", "Webcam"];
+        const validTabs = ["Home", "Dashboard", "Scanner", "Map", "History", "Admin", "Report", "MyReports", "Configuration", "Webcam"];
         if (saved && validTabs.includes(saved)) {
-            // Non-admin cannot default to admin-only tabs
-            if (!user?.is_admin && (saved === "Home" || saved === "Admin" || saved === "History")) {
-                return "Report";
-            }
-            // Admin cannot access user-only tabs (Scanner, Webcam, Report, MyReports)
-            if (user?.is_admin && (saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
+            // Non-admin cannot access admin-only tabs
+            if (!user?.is_admin && (saved === "Dashboard" || saved === "Admin" || saved === "History")) {
                 return "Home";
+            }
+            // Admin cannot access user-only tabs (Home, Scanner, Webcam, Report, MyReports)
+            if (user?.is_admin && (saved === "Home" || saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
+                return "Dashboard";
             }
             return saved;
         }
-        return user?.is_admin ? "Home" : "Report";
+        return user?.is_admin ? "Dashboard" : "Home";
     });
 
     useEffect(() => {
-        if (!user?.is_admin && (activeTab === "Home" || activeTab === "Admin" || activeTab === "History")) {
-            setActiveTab("Report");
-        } else if (user?.is_admin && (activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
+        if (!user?.is_admin && (activeTab === "Dashboard" || activeTab === "Admin" || activeTab === "History")) {
             setActiveTab("Home");
+        } else if (user?.is_admin && (activeTab === "Home" || activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
+            setActiveTab("Dashboard");
         } else {
             localStorage.setItem("si_active_tab", activeTab);
         }
@@ -767,7 +769,7 @@ const Dashboard: React.FC = () => {
             const [x1, y1, x2, y2] = det.bbox;
             const rw = x2 - x1;
             const rh = y2 - y1;
-            const color = CLASS_BOX_COLORS.get(det.class) || "#f97316";
+            const color = CLASS_BOX_COLORS.get((det.class || "").toLowerCase()) || "#f97316";
             const label = `${det.class.toUpperCase()} ${Math.round(det.confidence * 100)}%`;
             const cornerLen = Math.min(16, rw * 0.2, rh * 0.2);
 
@@ -841,7 +843,9 @@ const Dashboard: React.FC = () => {
             setScannerStatus("Loading Sample Image...");
             const fullUrl = samplePath.startsWith("http")
                 ? samplePath
-                : `${API_BASE}${samplePath.startsWith("/") ? "" : "/"}${samplePath}`;
+                : samplePath.startsWith("/")
+                    ? samplePath
+                    : `${API_BASE}/${samplePath.replace(/^\/?/, '')}`;
             const res = await fetch(fullUrl);
             if (!res.ok) {
                 throw new Error(`Failed to load sample image (HTTP ${res.status})`);
@@ -1022,8 +1026,8 @@ const Dashboard: React.FC = () => {
                                                 borderRadius: '10px',
                                                 background: 'rgba(255,255,255,0.03)',
                                                 borderLeft: `3px solid ${alert.type === 'danger' ? '#ef4444' :
-                                                        alert.type === 'success' ? '#10b981' :
-                                                            alert.type === 'info' ? '#3b82f6' : '#f97316'
+                                                    alert.type === 'success' ? '#10b981' :
+                                                        alert.type === 'info' ? '#3b82f6' : '#f97316'
                                                     }`,
                                                 position: 'relative'
                                             }}>
@@ -1054,7 +1058,7 @@ const Dashboard: React.FC = () => {
                             accept="image/png,image/jpeg,image/webp,image/gif"
                             style={{ display: "none" }}
                         />
-                        <div 
+                        <div
                             className="header-avatar-wrap clickable"
                             onClick={() => setShowProfileModal(true)}
                             title="Click to edit profile icon & settings"
@@ -1102,7 +1106,7 @@ const Dashboard: React.FC = () => {
                                 <h3 className="profile-modal-title">Edit Profile & Avatar</h3>
                                 <p className="profile-modal-subtitle">{user?.email || "Signed in user"}</p>
                             </div>
-                            <button 
+                            <button
                                 className="profile-modal-close-btn"
                                 onClick={() => setShowProfileModal(false)}
                                 title="Close"
@@ -1114,7 +1118,7 @@ const Dashboard: React.FC = () => {
                         <div className="profile-modal-body">
                             {/* Avatar Preview & Actions */}
                             <div className="profile-modal-avatar-section">
-                                <div 
+                                <div
                                     className="profile-modal-avatar-preview"
                                     onClick={() => avatarFileInputRef.current?.click()}
                                     title="Click to upload new image"
@@ -1136,7 +1140,7 @@ const Dashboard: React.FC = () => {
                                 </div>
 
                                 <div className="profile-modal-avatar-cta-group">
-                                    <button 
+                                    <button
                                         type="button"
                                         className="profile-modal-btn primary"
                                         onClick={() => avatarFileInputRef.current?.click()}
@@ -1145,7 +1149,7 @@ const Dashboard: React.FC = () => {
                                         <span>Upload Photo</span>
                                     </button>
                                     {userAvatar && (
-                                        <button 
+                                        <button
                                             type="button"
                                             className="profile-modal-btn danger"
                                             onClick={handleRemoveAvatar}
@@ -1187,8 +1191,8 @@ const Dashboard: React.FC = () => {
                                         placeholder="Enter your name"
                                         maxLength={40}
                                     />
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         className={`profile-modal-save-btn ${nameSavedFeedback ? "saved" : ""}`}
                                     >
                                         <Check size={14} />
@@ -1230,11 +1234,11 @@ const Dashboard: React.FC = () => {
 
                 <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div className="tab-content-wrapper">
-                        {activeTab === "Home" && user?.is_admin && (
+                        {activeTab === "Dashboard" && user?.is_admin && (
                             <div className="animate-in dashboard-home">
                                 <div className="dashboard-header">
                                     <div>
-                                        <h1 className="dashboard-title">{t("dashboard.home.title", "AI SMART INFRA Dashboard")}</h1>
+                                        <h1 className="dashboard-title">{t("dashboard.home.title", "Dashboard")}</h1>
                                     </div>
                                     <div className="dashboard-actions">
                                         <button className="dash-action-btn" onClick={handleRefresh} disabled={dashRefreshing}>
@@ -1263,6 +1267,10 @@ const Dashboard: React.FC = () => {
                                     <AnalyticsSection stats={stats} />
                                 </div>
                             </div>
+                        )}
+
+                        {activeTab === "Home" && !user?.is_admin && (
+                            <EditorialHome setActiveTab={setActiveTab} />
                         )}
 
                         {activeTab === "Scanner" && !user?.is_admin && (
@@ -1475,7 +1483,7 @@ const Dashboard: React.FC = () => {
                                     <canvas
                                         ref={webcamCanvasRef}
                                         className="webcam-overlay-canvas"
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10 }}
                                     />
 
                                     {/* Active HUD Cockpit Overlay */}
@@ -1686,6 +1694,9 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Citizen Urban AI Advisor — Regular Users Only (Hidden for Admins) */}
+            {!user?.is_admin && <UrbanAdvisorChat setActiveTab={setActiveTab} />}
         </div>
     );
 };

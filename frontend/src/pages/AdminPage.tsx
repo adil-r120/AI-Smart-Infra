@@ -98,8 +98,8 @@ export default function AdminPage() {
                 className="ap-sidebar"
             >
                 <div className="ap-brand">
-                    <img src="/smart-infra-logo.svg" alt="Logo" className="ap-logo" />
-                    <h2>AI Smart Infra</h2>
+                    <img src="/smart-infra-logo-v1.jpg" alt="Smart-Infra AI Logo" className="ap-logo" />
+                    <h2>Smart-Infra AI</h2>
                 </div>
                 <nav className="ap-nav">
                     {sidebarItems.map(item => (
@@ -192,9 +192,14 @@ export default function AdminPage() {
                 }
 
                 .ap-logo {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 8px;
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 12px;
+                    object-fit: contain;
+                    background: #0a0f1e;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+                    flex-shrink: 0;
                 }
 
                 .ap-brand h2 {

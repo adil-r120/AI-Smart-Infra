@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { API_BASE } from "../api/config";
 import { apiErrorMessage } from "../api/errors";
-import { Eye, EyeOff, Shield, Wifi, Activity, Lock, Mail, User, CheckCircle, AlertCircle, X } from "lucide-react";
+import { Eye, EyeOff, Activity, Lock, Mail, User, CheckCircle, AlertCircle, X, Shield } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
 
@@ -39,14 +39,14 @@ export default function LoginPage() {
     const passwordsMatch = password === confirmPassword;
 
     useEffect(() => {
-        document.title = mode === "signin" ? "AI Smart Infra" : "AI Smart Infra";
+        document.title = "Smart-Infra AI";
         let meta = document.querySelector('meta[name="description"]');
         if (!meta) {
             meta = document.createElement("meta");
             meta.setAttribute("name", "description");
             document.head.appendChild(meta);
         }
-        meta.setAttribute("content", `Access the AI Smart-Infra platform. ${mode === "signin" ? "Login to your account." : "Create a new secure account."}`);
+        meta.setAttribute("content", `Access the Smart-Infra AI platform. ${mode === "signin" ? "Login to your account." : "Create a new secure account."}`);
         if (emailRef.current) emailRef.current.focus();
     }, [mode]);
 
@@ -179,29 +179,11 @@ export default function LoginPage() {
                     <div className="lp-logo-wrap">
                         <div className="lp-logo-ring" />
                         <div className="lp-logo">
-                            <img src="/smart-infra-logo.svg" alt="Smart Infra Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                            <img src="/smart-infra-logo-v1.jpg" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                         </div>
                     </div>
                     <h1 className="lp-product">{t("auth.brand.title")}</h1>
                     <p className="lp-tagline">{t("auth.brand.tagline")}</p>
-
-                    <div className="lp-feature-list">
-                        {[
-                            { icon: <Activity size={16} />, label: t("auth.brand.features.aiDetection") },
-                            { icon: <Wifi size={16} />, label: t("auth.brand.features.gpsMonitoring") },
-                            { icon: <Shield size={16} />, label: t("auth.brand.features.securePipeline") },
-                        ].map(f => (
-                            <div key={f.label} className="lp-feature">
-                                {f.icon}
-                                <span>{f.label}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="lp-status-bar">
-                        <span className="lp-status-dot" />
-                        <span>{t("auth.brand.systemStatus")}</span>
-                    </div>
                 </div>
             </div>
 
@@ -405,7 +387,7 @@ export default function LoginPage() {
                                     shape="pill"
                                     size="large"
                                     text="continue_with"
-                                    width="360"
+                                    width="380"
                                 />
                             </div>
                         </div>
@@ -434,9 +416,18 @@ export default function LoginPage() {
                 .lp-root {
                     display: flex; min-height: 100vh; height: 100vh; width: 100%;
                     overflow: hidden; position: relative;
-                    background: linear-gradient(rgba(7,7,14,0.72), rgba(7,7,14,0.88)), url('/smart-infra-logo.svg');
-                    background-size: cover; background-position: center; background-attachment: fixed;
+                    background: #050814;
                     font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+                }
+                .lp-root::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(rgba(10, 15, 30, 0.35), rgba(5, 8, 20, 0.55)), url('/login-bg.jpg') no-repeat center center;
+                    background-size: 100% 100%;
+                    filter: blur(3.5px);
+                    transform: scale(1.02);
+                    z-index: 0;
                 }
 
                 /* ── Toast ── */
@@ -498,20 +489,21 @@ export default function LoginPage() {
                     margin-bottom: clamp(16px, 2.5vh, 28px);
                 }
                 .lp-logo-ring {
-                    position: absolute; inset: -8px; border-radius: clamp(24px, 4vw, 34px);
+                    position: absolute; inset: -10px; border-radius: clamp(28px, 4.2vw, 38px);
                     border: 2px solid rgba(99,102,241,0.25);
                     animation: lp-ring-glow 3s ease-in-out infinite;
                 }
                 @keyframes lp-ring-glow {
-                    0%, 100% { border-color: rgba(99,102,241,0.2); box-shadow: 0 0 20px rgba(99,102,241,0.08); }
-                    50%      { border-color: rgba(99,102,241,0.45); box-shadow: 0 0 40px rgba(99,102,241,0.15); }
+                    0%, 100% { border-color: rgba(99,102,241,0.2); box-shadow: 0 0 24px rgba(99,102,241,0.12); }
+                    50%      { border-color: rgba(99,102,241,0.45); box-shadow: 0 0 48px rgba(99,102,241,0.25); }
                 }
                 .lp-logo {
-                    width: clamp(76px, 10vw, 110px); height: clamp(76px, 10vw, 110px);
-                    border-radius: clamp(20px, 3.5vw, 28px); overflow: hidden;
+                    width: clamp(96px, 11vw, 132px); height: clamp(96px, 11vw, 132px);
+                    border-radius: clamp(22px, 3.6vw, 32px); overflow: hidden;
                     display: flex; align-items: center; justify-content: center;
-                    color: white; position: relative;
-                    box-shadow: 0 16px 56px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+                    background: #0a0f1e; position: relative;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.65), 0 0 35px rgba(99,102,241,0.25);
                 }
 
                 .lp-product {
@@ -607,21 +599,28 @@ export default function LoginPage() {
 
                 /* ── Auth panel ── */
                 .lp-auth {
-                    width: clamp(400px, 36vw, 480px); flex-shrink: 0;
+                    width: clamp(480px, 42vw, 580px); flex-shrink: 0;
                     display: flex; flex-direction: column; align-items: center; justify-content: center;
                     padding: 24px 32px; position: relative; z-index: 1; height: 100vh;
-                    background: rgba(255,255,255,0.025); border-left: 1px solid rgba(255,255,255,0.07);
-                    backdrop-filter: blur(28px);
-                    box-sizing: border-box;
+                    background: transparent; border-left: none;
+                    backdrop-filter: none; -webkit-backdrop-filter: none;
+                    box-sizing: border-box; overflow-y: auto; scrollbar-width: none;
                 }
+                .lp-auth::-webkit-scrollbar { display: none; }
                 .lp-card {
-                    width: 100%; max-width: 390px;
+                    width: 100%; max-width: 500px;
+                    background: rgba(10, 15, 30, 0.42);
+                    backdrop-filter: blur(4px);
+                    -webkit-backdrop-filter: blur(4px);
+                    border: 1px solid rgba(255, 255, 255, 0.14);
+                    border-radius: 24px;
+                    padding: 34px 36px;
+                    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
                     transition: transform 0.3s ease;
                     margin: auto 0;
-                    max-height: 100%;
+                    max-height: calc(100vh - 40px);
                     overflow-y: auto; overflow-x: hidden;
                     scrollbar-width: none;
-                    padding: 8px 4px;
                 }
                 .lp-card::-webkit-scrollbar { display: none; }
                 .lp-shake { animation: lp-shake 0.45s cubic-bezier(.36,.07,.19,.97) both; }
@@ -635,14 +634,14 @@ export default function LoginPage() {
                 /* ── Toggle tabs ── */
                 .lp-toggle {
                     display: flex; background: rgba(255,255,255,0.06);
-                    border-radius: 12px; padding: 4px; margin-bottom: 20px;
+                    border-radius: 12px; padding: 4px; margin-bottom: 22px;
                     border: 1px solid rgba(255,255,255,0.12);
                     gap: 4px;
                 }
                 .lp-toggle button {
-                    flex: 1; padding: 8px 10px; border: none; border-radius: 9px;
+                    flex: 1; padding: 10px 14px; border: none; border-radius: 9px;
                     background: transparent; color: rgba(255,255,255,0.7);
-                    font-size: 0.83rem; font-weight: 700; cursor: pointer;
+                    font-size: 0.9rem; font-weight: 700; cursor: pointer;
                     transition: all 0.22s ease; font-family: inherit; letter-spacing: 0.01em;
                 }
                 .lp-toggle button.active {
@@ -653,12 +652,12 @@ export default function LoginPage() {
 
                 /* ── Card header ── */
                 .lp-card-title {
-                    font-size: 1.6rem; font-weight: 800; color: #ffffff;
+                    font-size: 1.8rem; font-weight: 800; color: #ffffff;
                     margin: 0 0 6px; letter-spacing: -0.03em; line-height: 1.2;
                 }
                 .lp-card-sub {
-                    font-size: 0.85rem; color: rgba(255,255,255,0.72);
-                    margin: 0 0 20px; font-weight: 400; line-height: 1.45;
+                    font-size: 0.92rem; color: rgba(255,255,255,0.72);
+                    margin: 0 0 22px; font-weight: 400; line-height: 1.45;
                 }
 
                 /* ── Form ── */
@@ -673,11 +672,11 @@ export default function LoginPage() {
                 /* ── Fields ── */
                 .lp-field { display: flex; flex-direction: column; gap: 7px; }
                 .lp-field label {
-                    font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.85);
-                    text-transform: uppercase; letter-spacing: 0.08em;
+                    font-size: 0.8rem; font-weight: 700; color: rgba(255,255,255,0.85);
+                    text-transform: uppercase; letter-spacing: 0.07em;
                 }
                 .lp-field-hint {
-                    font-size: 0.72rem; font-weight: 500; margin-top: 2px;
+                    font-size: 0.78rem; font-weight: 500; margin-top: 2px;
                     display: flex; align-items: center; gap: 5px;
                 }
                 .lp-field-hint.error { color: #fca5a5; }
@@ -693,8 +692,8 @@ export default function LoginPage() {
                 .lp-role-toggle button {
                     flex: 1; border: none; border-radius: 9px;
                     background: transparent; color: rgba(255,255,255,0.7);
-                    font-size: 0.82rem; font-weight: 700; cursor: pointer;
-                    padding: 9px 10px; transition: all 0.2s ease; font-family: inherit;
+                    font-size: 0.88rem; font-weight: 700; cursor: pointer;
+                    padding: 10px 12px; transition: all 0.2s ease; font-family: inherit;
                 }
                 .lp-role-toggle button.active {
                     background: rgba(99,102,241,0.35); color: #ffffff;
@@ -707,11 +706,11 @@ export default function LoginPage() {
                     position: relative; display: flex; align-items: center;
                     width: 100%; transition: all 0.2s;
                 }
-                .lp-input-icon { position: absolute; left: 15px; color: rgba(255,255,255,0.45); pointer-events: none; transition: color 0.2s; }
+                .lp-input-icon { position: absolute; left: 16px; color: rgba(255,255,255,0.45); pointer-events: none; transition: color 0.2s; }
                 .lp-input-wrap input {
-                    width: 100%; padding: 12px 16px 12px 44px; box-sizing: border-box;
+                    width: 100%; padding: 13px 18px 13px 46px; box-sizing: border-box;
                     background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15);
-                    border-radius: 13px; color: #ffffff; font-size: 0.92rem; font-family: inherit;
+                    border-radius: 13px; color: #ffffff; font-size: 0.98rem; font-family: inherit;
                     outline: none; transition: all 0.22s; font-weight: 500;
                 }
                 .lp-input-wrap input::placeholder { color: rgba(255,255,255,0.42); font-weight: 400; }
@@ -771,8 +770,8 @@ export default function LoginPage() {
                     from { transform: rotate(45deg) scale(0.4); opacity: 0; }
                     to   { transform: rotate(45deg) scale(1); opacity: 1; }
                 }
-                .lp-remember span { font-size: 0.82rem; font-weight: 500; color: rgba(255,255,255,0.7); transition: color 0.2s; }
-                .lp-forgot { background: none; border: none; color: #a5b4fc; font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 0; transition: color 0.2s; }
+                .lp-remember span { font-size: 0.88rem; font-weight: 500; color: rgba(255,255,255,0.7); transition: color 0.2s; }
+                .lp-forgot { background: none; border: none; color: #a5b4fc; font-size: 0.84rem; font-weight: 600; cursor: pointer; padding: 0; transition: color 0.2s; }
                 .lp-forgot:hover { color: #c7d2fe; text-decoration: underline; }
 
                 /* ── Error banner ── */
@@ -795,10 +794,10 @@ export default function LoginPage() {
 
                 /* ── Submit button ── */
                 .lp-submit {
-                    margin-top: 6px; padding: 14px;
+                    margin-top: 6px; padding: 14px 18px;
                     background: linear-gradient(135deg, #6366f1, #8b5cf6);
                     border: none; border-radius: 13px; color: #ffffff;
-                    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+                    font-size: 1rem; font-weight: 700; cursor: pointer;
                     display: flex; align-items: center; justify-content: center; gap: 9px;
                     transition: all 0.22s; box-shadow: 0 4px 22px rgba(99,102,241,0.38);
                     font-family: inherit; letter-spacing: 0.01em; width: 100%;
@@ -822,8 +821,8 @@ export default function LoginPage() {
                 .lp-social { margin-top: 18px; }
                 .lp-social-div {
                     display: flex; align-items: center; gap: 12px;
-                    font-size: 0.7rem; color: rgba(255,255,255,0.55);
-                    text-transform: uppercase; font-weight: 700; margin-bottom: 12px; letter-spacing: 0.08em;
+                    font-size: 0.76rem; color: rgba(255,255,255,0.55);
+                    text-transform: uppercase; font-weight: 700; margin-bottom: 14px; letter-spacing: 0.08em;
                 }
                 .lp-social-div::before, .lp-social-div::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.12); }
                 .lp-social-btns { display: flex; gap: 12px; justify-content: center; }
@@ -834,7 +833,7 @@ export default function LoginPage() {
                 .lp-google-wrapper:hover { transform: scale(1); }
 
                 /* ── Switch ── */
-                .lp-switch { text-align: center; margin: 18px 0 10px; font-size: 0.84rem; color: rgba(255,255,255,0.72); }
+                .lp-switch { text-align: center; margin: 20px 0 10px; font-size: 0.9rem; color: rgba(255,255,255,0.72); }
                 .lp-switch button {
                     background: none; border: none; color: #a5b4fc; font-weight: 700;
                     cursor: pointer; font-family: inherit; font-size: inherit; transition: color 0.2s;
@@ -848,7 +847,7 @@ export default function LoginPage() {
                 }
                 .lp-legal button {
                     background: none; border: none; color: rgba(255,255,255,0.55);
-                    font-size: 0.72rem; font-weight: 600; cursor: pointer;
+                    font-size: 0.78rem; font-weight: 600; cursor: pointer;
                     font-family: inherit; transition: color 0.2s; letter-spacing: 0.02em;
                 }
                 .lp-legal button:hover { color: #ffffff; }
@@ -856,26 +855,27 @@ export default function LoginPage() {
 
                 /* ── Responsive ── */
                 @media (max-width: 1024px) {
-                    .lp-auth { width: 460px; }
+                    .lp-auth { width: 500px; }
                     .lp-product { font-size: 2.8rem; }
                 }
                 @media (max-width: 900px) {
-                    .lp-auth { width: 420px; padding-left: 28px; padding-right: 28px; }
+                    .lp-auth { width: 460px; padding-left: 24px; padding-right: 24px; }
                 }
                 @media (max-width: 768px) {
                     .lp-brand { display: none; }
-                    .lp-auth { width: 100%; border-left: none; padding: 36px 24px 60px; }
-                    .lp-card { max-width: 100%; max-height: none; }
-                    .lp-card-title { font-size: 1.55rem; }
-                    .lp-card-sub { margin-bottom: 20px; }
+                    .lp-auth { width: 100%; border-left: none; padding: 24px 16px 40px; }
+                    .lp-card { max-width: 480px; margin: auto; padding: 28px 22px; }
+                    .lp-card-title { font-size: 1.6rem; }
+                    .lp-card-sub { margin-bottom: 20px; font-size: 0.88rem; }
                     .lp-toggle { margin-bottom: 22px; }
-                    .lp-field label { font-size: 0.67rem; }
-                    .lp-role-toggle button { font-size: 0.78rem; padding: 8px 8px; }
-                    .lp-input-wrap input { font-size: 0.88rem; }
-                    .lp-submit { font-size: 0.9rem; padding: 13px; }
+                    .lp-field label { font-size: 0.76rem; }
+                    .lp-role-toggle button { font-size: 0.84rem; padding: 9px 10px; }
+                    .lp-input-wrap input { font-size: 0.94rem; }
+                    .lp-submit { font-size: 0.95rem; padding: 13px; }
                 }
                 @media (max-width: 420px) {
-                    .lp-auth { padding: 28px 16px 52px; }
+                    .lp-auth { padding: 16px 12px 32px; }
+                    .lp-card { padding: 24px 16px; border-radius: 20px; }
                 }
             `}</style>
         </div>

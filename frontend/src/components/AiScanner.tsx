@@ -60,21 +60,21 @@ const SAMPLE_ROADWAYS = [
         id: "sample-pothole",
         title: "Pothole & Surface Damage",
         meta: "High-resolution roadway scan",
-        url: `${API_BASE}/results/scan_20261015_164523_293.jpg`,
+        url: "/samples/pothole.jpg",
         icon: "🕳️"
     },
     {
         id: "sample-traffic",
         title: "Surface Hazards & Traffic",
         meta: "Multi-vehicle urban street scan",
-        url: `${API_BASE}/results/scan_20261015_164525_689.jpg`,
+        url: "/samples/traffic.jpg",
         icon: "🚗"
     },
     {
         id: "sample-crack",
         title: "Pavement & Road Cracks",
         meta: "Structural asphalt inspection",
-        url: `${API_BASE}/results/scan_20261023_182552_260.jpg`,
+        url: "/samples/road.jpg",
         icon: "⚡"
     }
 ];
@@ -371,24 +371,65 @@ function AiScanner({
 
             {/* ── NEURAL INFERENCE LOADING STATE ── */}
             {loading && (
-                <div className="aiscanner-loading-card animate-in">
-                    <div className="aiscanner-radar-loader">
-                        <div className="aiscanner-loader-ring" />
-                        <div className="aiscanner-loader-inner">
-                            <Cpu size={24} />
+                <div className="aiscanner-loading-container animate-in">
+                    {preview ? (
+                        <div className="aiscanner-viewport-frame aiscanner-scanning-frame">
+                            {/* Sci-Fi Corner Brackets */}
+                            <div className="hud-corner hud-corner-tl" />
+                            <div className="hud-corner hud-corner-tr" />
+                            <div className="hud-corner hud-corner-bl" />
+                            <div className="hud-corner hud-corner-br" />
+
+                            <img 
+                                src={preview} 
+                                alt="Scanning in progress" 
+                                className="aiscanner-viewport-image"
+                            />
+
+                            {/* Active Digital Laser Scanning Line */}
+                            <div className="scanning-line" />
+
+                            {/* Tactical Reticle in Center */}
+                            <div className="livefeed-reticle">
+                                <div className="livefeed-reticle-ring" />
+                                <div className="livefeed-reticle-cross-h" />
+                                <div className="livefeed-reticle-cross-v" />
+                            </div>
+
+                            {/* Scanning HUD Status Banner */}
+                            <div className="aiscanner-scanning-hud-banner">
+                                <div className="aiscanner-scanning-hud-title">
+                                    <Sparkles size={16} className="text-primary animate-pulse" />
+                                    <span>{scannerStatus || "RUNNING NEURAL EDGE INFERENCE..."}</span>
+                                </div>
+                                <div className="aiscanner-pipeline-pills" style={{ marginTop: 6 }}>
+                                    <span className="aiscanner-pipeline-pill active">✓ Preprocessing</span>
+                                    <span className="aiscanner-pipeline-pill active">● Damage Detection</span>
+                                    <span className="aiscanner-pipeline-pill">○ Spatial Telemetry</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <h3 className="aiscanner-loading-title">
-                        {scannerStatus || "Running Neural Edge Inference..."}
-                    </h3>
-                    <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", maxWidth: 460, margin: "0 auto" }}>
-                        Applying Model A (Pothole custom weights), Model B (COCO objects), and spatial bounding coordinate mapping.
-                    </p>
-                    <div className="aiscanner-pipeline-pills">
-                        <span className="aiscanner-pipeline-pill active">✓ Preprocessing</span>
-                        <span className="aiscanner-pipeline-pill active">● Damage Detection</span>
-                        <span className="aiscanner-pipeline-pill">○ Spatial Telemetry</span>
-                    </div>
+                    ) : (
+                        <div className="aiscanner-loading-card">
+                            <div className="aiscanner-radar-loader">
+                                <div className="aiscanner-loader-ring" />
+                                <div className="aiscanner-loader-inner">
+                                    <Cpu size={24} />
+                                </div>
+                            </div>
+                            <h3 className="aiscanner-loading-title">
+                                {scannerStatus || "Running Neural Edge Inference..."}
+                            </h3>
+                            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", maxWidth: 460, margin: "0 auto" }}>
+                                Applying Model A (Pothole custom weights), Model B (COCO objects), and spatial bounding coordinate mapping.
+                            </p>
+                            <div className="aiscanner-pipeline-pills">
+                                <span className="aiscanner-pipeline-pill active">✓ Preprocessing</span>
+                                <span className="aiscanner-pipeline-pill active">● Damage Detection</span>
+                                <span className="aiscanner-pipeline-pill">○ Spatial Telemetry</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

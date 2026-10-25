@@ -1056,6 +1056,62 @@ async def delete_all_detections(
     return {"status": "success", "deleted": num_deleted}
 
 
+@app.get("/detections/{detection_id}")
+def get_single_detection(
+        detection_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
+    det = db.query(Detection).filter(Detection.id == detection_id).first()
+    if not det:
+        raise HTTPException(status_code=404, detail="Detection not found")
+    if not current_user.is_admin and det.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this detection")
+    return {
+        "id": det.id,
+        "latitude": det.latitude,
+        "longitude": det.longitude,
+        "confidence": det.confidence,
+        "object_type": det.object_type,
+        "image": det.image_path,
+        "is_danger": det.is_danger,
+        "camera_id": det.camera_id,
+        "timestamp": det.created_at.strftime("%Y-%m-%d %H:%M:%S") if det.created_at else None,
+    }
+
+
+@app.delete("/detections/{detection_id}")
+async def delete_single_detection(
+        detection_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
+    det = db.query(Detection).filter(Detection.id == detection_id).first()
+    if not det:
+        raise HTTPException(status_code=404, detail="Detection not found")
+    if not current_user.is_admin and det.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this detection")
+    
+    if det.image_path:
+        img_file = os.path.basename(det.image_path)
+        fp = os.path.join(_results_dir, img_file)
+        if os.path.isfile(fp):
+            try:
+                os.unlink(fp)
+            except Exception:
+                pass
+
+    obj_type = det.object_type
+    db.delete(det)
+    db.commit()
+    log_action(
+        db,
+        current_user.id,
+        f"Deleted detection #{detection_id} ({obj_type})",
+        "detections",
+        detection_id
+    )
+    return {"status": "success", "id": detection_id}
+
+
 @app.post("/start-camera")
 async def start_camera(source: str = "0"):
     global camera_process

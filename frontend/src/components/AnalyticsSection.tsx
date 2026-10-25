@@ -82,8 +82,8 @@ const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ stats }) => {
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Multi-dimensional infrastructure health analysis</p>
                     </div>
                     
-                    <div style={{ height: "300px", width: '100%', position: 'relative' }}>
-                        <ResponsiveContainer width="99%" height="100%" minWidth={100} minHeight={100}>
+                    <div style={{ height: 300, minHeight: 300, width: '100%', position: 'relative' }}>
+                        <ResponsiveContainer width="100%" height={300} debounce={50}>
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                                 <PolarGrid stroke="var(--border)" />
                                 <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 10, fontWeight: 800 }} />
@@ -118,8 +118,8 @@ const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ stats }) => {
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Classification breakdown across infrastructure</p>
                     </div>
 
-                    <div style={{ height: "300px", width: '100%' }}>
-                        <ResponsiveContainer width="99%" height="100%" minWidth={100} minHeight={100}>
+                    <div style={{ height: 300, minHeight: 300, width: '100%' }}>
+                        <ResponsiveContainer width="100%" height={300} debounce={50}>
                             <BarChart data={distData}>
                                 <defs>
                                     <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">

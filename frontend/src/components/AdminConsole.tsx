@@ -1028,8 +1028,8 @@ const AdminConsole: React.FC<AdminConsoleProps> = ({ alerts = [], onDismissAlert
                                                     <span className="mono-text" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{log.user_email || "-"}</span>
                                                 </div>
                                             </td>
-                                            <td>
-                                                <span className="admin-issue-badge issue-other" style={{ textTransform: 'none' }}>
+                                            <td className="admin-audit-action-cell">
+                                                <span className="admin-issue-badge issue-other" style={{ textTransform: 'none', whiteSpace: 'normal', textAlign: 'left', display: 'inline-block' }}>
                                                     {log.action}
                                                 </span>
                                             </td>

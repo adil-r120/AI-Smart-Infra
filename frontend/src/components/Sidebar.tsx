@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Monitor, Calendar, Settings, Map as MapIcon, X, ShieldAlert, FileText, Camera, LogOut, ClipboardList, Scan } from "lucide-react";
+import { Home, Monitor, Calendar, Settings, Map as MapIcon, X, ShieldAlert, FileText, Camera, LogOut, ClipboardList, Scan, LayoutDashboard } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 interface SidebarProps {
@@ -15,11 +15,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive
     const { logout, user } = useAuth();
     const allMenuItems = [
         ...(user?.is_admin ? [
-            { id: "Home", label: "Dashboard", Icon: Home },
+            { id: "Dashboard", label: "Dashboard", Icon: LayoutDashboard },
             { id: "Admin", label: "Admin Console", Icon: ShieldAlert },
             { id: "History", label: "Detection Log", Icon: Calendar },
         ] : []),
         ...(!user?.is_admin ? [
+            { id: "Home", label: "Home", Icon: Home },
             { id: "Webcam", label: "Live Feed", Icon: Camera },
             { id: "Scanner", label: "Upload Issues", Icon: Scan },
             { id: "Report", label: "Report & Track", Icon: FileText },
