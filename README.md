@@ -1,4 +1,4 @@
-# 📡 Smart-Infra: AI Municipal Infrastructure Platform
+# 📡 Smart-Infra: AI Infrastructure Monitoring System
 
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -130,10 +130,10 @@ The local Vite development server will be available at `http://localhost:5173`.
 
 ## 🔐 Default Credentials & Ports
 
-| Role | Username / Email | Password | Admin Access Code |
+| Role | Username / Email | Password |How to Access Admin Code |
 | :--- | :--- | :--- | :--- |
-| **System Administrator** | `admin@smartinfra.com` | `Password@123` | `AI-SMART-INFRA-2026` |
-| **Database Root** | `root` | `Password@123` | — |
+| **System Administrator** | `smartinfra.com` | `Create by yourself...` | `Ask to Admin` |
+| **User Administrator** | `smartinfra.com` | `Create by yourself...`|
 
 ---
 
@@ -143,9 +143,9 @@ Configure backend settings via `backend/.env`:
 
 | Variable | Description | Example Default |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | SQLAlchemy connection string | `mysql+pymysql://root:Password%40123@db:3306/smart_infra` |
-| `JWT_SECRET` | Secret key for JWT token signing | `smart-infra-v2-production-hardened-key` |
-| `ADMIN_SIGNUP_CODE` | Verification code required for Admin signup | `AI-SMART-INFRA-2026` |
+| `DATABASE_URL` | SQLAlchemy connection string | `*****************`|
+| `JWT_SECRET` | Secret key for JWT token signing | `**************` |
+| `ADMIN_SIGNUP_CODE` | Verification code required for Admin signup | `Ask to Admin.....` |
 | `DETECTION_THRESHOLD` | Confidence threshold for YOLO detection | `0.15` |
 | `AI_PROVIDER` | LLM backend for Urban Advisor | `BYTEZ` or `GEMINI` |
 | `AI_API_KEY` | API Key for generative advisory | `<YOUR_API_KEY>` |
