@@ -99,7 +99,7 @@ export default function AdminPage() {
             >
                 <div className="ap-brand">
                     <img src="/smart-infra-icon.png" alt="Smart-Infra AI Logo" className="ap-logo" />
-                    <h2>Smart-Infra AI</h2>
+                    <h2><span className="ap-brand-main">Smart-Infra</span> <span className="ap-brand-ai">AI</span></h2>
                 </div>
                 <nav className="ap-nav">
                     {sidebarItems.map(item => (
@@ -206,9 +206,21 @@ export default function AdminPage() {
                     font-size: 1.2rem;
                     font-weight: 800;
                     margin: 0;
-                    background: linear-gradient(135deg, #fff, #818cf8);
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                }
+                .ap-brand-main {
+                    background: linear-gradient(135deg, #fff 35%, #a5b4fc 75%, #818cf8);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                }
+                .ap-brand-ai {
+                    background: linear-gradient(135deg, var(--primary, #f97316), #8b5cf6);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
                 }
 
                 .ap-nav {

@@ -114,7 +114,10 @@ const Logo: React.FC<LogoProps> = ({
                 }
 
                 .logo-main {
-                    color: var(--text-main);
+                    background: linear-gradient(135deg, #fff 35%, #a5b4fc 75%, #818cf8);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
                 }
 
                 .logo-accent {

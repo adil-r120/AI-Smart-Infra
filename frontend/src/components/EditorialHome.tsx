@@ -645,7 +645,9 @@ const EditorialHome: React.FC<EditorialHomeProps> = ({ setActiveTab, theme, togg
               {/* Col 1: Brand & Overview */}
               <div className="footer-col brand-col">
                 <div className="footer-brand-title">
-                  <span className="footer-brand-name">Smart-Infra <span className="footer-brand-accent">AI</span></span>
+                  <span className="footer-brand-name">
+                    <span className="footer-brand-main">Smart-Infra</span> <span className="footer-brand-accent">AI</span>
+                  </span>
                 </div>
                 <p className="footer-brand-text">
                   Autonomous municipal infrastructure monitoring and edge computer vision intelligence 
