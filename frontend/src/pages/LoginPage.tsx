@@ -15,6 +15,7 @@ export default function LoginPage() {
     const { login, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
     const emailRef = useRef<HTMLInputElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     const [mode, setMode] = useState<Mode>("signin");
     const [name, setName] = useState("");
@@ -49,6 +50,38 @@ export default function LoginPage() {
         meta.setAttribute("content", `Access the Smart-Infra AI platform. ${mode === "signin" ? "Login to your account." : "Create a new secure account."}`);
         if (emailRef.current) emailRef.current.focus();
     }, [mode]);
+
+    // Video autoplay assurance with fallback for browser policies
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        video.muted = true;
+        video.defaultMuted = true;
+
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+                console.warn("Login page video autoplay was deferred by browser policy:", err);
+            });
+        }
+
+        const handleFirstInteraction = () => {
+            if (video && video.paused) {
+                video.play().catch(() => { });
+            }
+        };
+
+        window.addEventListener("click", handleFirstInteraction, { once: true });
+        window.addEventListener("touchstart", handleFirstInteraction, { once: true });
+        window.addEventListener("keydown", handleFirstInteraction, { once: true });
+
+        return () => {
+            window.removeEventListener("click", handleFirstInteraction);
+            window.removeEventListener("touchstart", handleFirstInteraction);
+            window.removeEventListener("keydown", handleFirstInteraction);
+        };
+    }, []);
 
     function validateEmail(e: string) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -163,6 +196,20 @@ export default function LoginPage() {
 
     return (
         <div className="lp-root">
+            {/* ── Background Video with Blurry Effect (Login Page Only) ── */}
+            <div className="lp-video-backdrop" aria-hidden="true">
+                <video
+                    ref={videoRef}
+                    className="lp-bg-video"
+                    src="/Smart_city_camera_loginpage.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="auto"
+                />
+                <div className="lp-video-overlay" />
+            </div>
 
             {/* ── Toast ── */}
             {toast && (
@@ -421,15 +468,51 @@ export default function LoginPage() {
                     background: #050814;
                     font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
                 }
-                .lp-root::before {
-                    content: '';
+                .lp-video-backdrop {
                     position: absolute;
                     inset: 0;
-                    background: linear-gradient(rgba(10, 15, 30, 0.35), rgba(5, 8, 20, 0.55)), url('/login-bg.jpg') no-repeat center center;
-                    background-size: 100% 100%;
-                    filter: blur(3.5px);
-                    transform: scale(1.02);
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden;
                     z-index: 0;
+                    pointer-events: none;
+                    background: #050814;
+                }
+                .lp-bg-video {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    min-width: 100%;
+                    min-height: 100%;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    transform: translate3d(-50%, -50%, 0) scale(1.04);
+                    -webkit-transform: translate3d(-50%, -50%, 0) scale(1.04);
+                    filter: blur(1px) brightness(0.72) saturate(1.1);
+                    -webkit-filter: blur(1px) brightness(0.72) saturate(1.1);
+                    will-change: transform, filter;
+                    backface-visibility: hidden;
+                    -webkit-backface-visibility: hidden;
+                    pointer-events: none;
+                    animation: lp-video-fade-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                @keyframes lp-video-fade-in {
+                    from { opacity: 0; }
+                    to   { opacity: 1; }
+                }
+                .lp-video-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: radial-gradient(
+                        circle at 50% 50%,
+                        rgba(5, 8, 20, 0.35) 0%,
+                        rgba(10, 15, 30, 0.45) 60%,
+                        rgba(5, 8, 20, 0.65) 100%
+                    );
+                    backdrop-filter: blur(1.5px);
+                    -webkit-backdrop-filter: blur(1.5px);
+                    pointer-events: none;
                 }
 
                 /* ── Toast ── */
