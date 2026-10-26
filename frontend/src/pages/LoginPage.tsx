@@ -183,7 +183,7 @@ export default function LoginPage() {
                         </div>
                     </div>
                     <h1 className="lp-product">
-                        Smart-Infra <span className="lp-product-ai">AI</span>
+                        <span className="lp-product-main">Smart-Infra</span> <span className="lp-product-ai">AI</span>
                     </h1>
                     <p className="lp-tagline">{t("auth.brand.tagline")}</p>
                 </div>
@@ -509,9 +509,16 @@ export default function LoginPage() {
                 }
 
                 .lp-product {
-                    font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900; color: #ffffff;
+                    font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900;
                     letter-spacing: -0.045em; margin: 0 0 10px;
                     line-height: 1.1;
+                }
+                .lp-product-main {
+                    background: linear-gradient(135deg, #fff 35%, #a5b4fc 75%, #818cf8);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    display: inline-block;
                 }
                 .lp-product-ai {
                     background: linear-gradient(135deg, var(--primary, #f97316), #8b5cf6);
