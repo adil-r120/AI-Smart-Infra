@@ -34,11 +34,11 @@
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .light-theme {
 
-    & :is(h1, h2, h3, h4, h5, h6) {
+    & :is(h1, h2, h3, h4, h5, h6):not(.editorial-home-container, .editorial-home-container *, .editorial-home-page, .editorial-home-page *, .how-it-works-backdrop, .how-it-works-backdrop *) {
         color: #020617 !important;
     }
 
-    & :is(p, span, label) {
+    & :is(p, span, label, div, a, button):not(.editorial-home-container, .editorial-home-container *, .editorial-home-page, .editorial-home-page *, .how-it-works-backdrop, .how-it-works-backdrop *) {
         color: #1e293b !important;
     }
 

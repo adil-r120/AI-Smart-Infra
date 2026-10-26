@@ -9,13 +9,15 @@ interface SidebarProps {
     handleCameraToggle: () => void;
     isOpen?: boolean;
     toggleSidebar?: () => void;
+    closeSidebar?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive, handleCameraToggle, isOpen, toggleSidebar }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive, handleCameraToggle, isOpen, toggleSidebar, closeSidebar }) => {
     const { logout, user } = useAuth();
     const allMenuItems = [
         ...(user?.is_admin ? [
             { id: "Dashboard", label: "Dashboard", Icon: LayoutDashboard },
+            { id: "Home", label: "Home", Icon: Home },
             { id: "Admin", label: "Admin Console", Icon: ShieldAlert },
             { id: "History", label: "Detection Log", Icon: Calendar },
         ] : []),
@@ -34,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive
         <>
             <div
                 className={`sidebar-overlay ${isOpen ? "open" : ""}`}
-                onClick={toggleSidebar}
+                onClick={closeSidebar || toggleSidebar}
             />
             <aside className={`sidebar glass-sidebar ${isOpen ? "open" : ""}`}>
                 <nav className="sidebar-nav">
@@ -43,7 +45,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive
                             <li
                                 key={id}
                                 className={`nav-item-v2 ${activeTab === id ? "active" : ""}`}
-                                onClick={() => { setActiveTab(id); toggleSidebar?.(); }}
+                                onClick={() => {
+                                    setActiveTab(id);
+                                    if (closeSidebar) {
+                                        closeSidebar();
+                                    } else if (isOpen && toggleSidebar) {
+                                        toggleSidebar();
+                                    }
+                                }}
                             >
                                 <Icon size={20} />
                                 <span>{label}</span>

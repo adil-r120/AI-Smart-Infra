@@ -179,7 +179,7 @@ export default function LoginPage() {
                     <div className="lp-logo-wrap">
                         <div className="lp-logo-ring" />
                         <div className="lp-logo">
-                            <img src="/smart-infra-logo-v1.jpg" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                            <img src="/smart-infra-icon.png" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                         </div>
                     </div>
                     <h1 className="lp-product">{t("auth.brand.title")}</h1>

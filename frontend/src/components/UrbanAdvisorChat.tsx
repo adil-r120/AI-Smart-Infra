@@ -204,7 +204,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
                             }}>
                                 <img 
-                                    src="/smart-infra-logo-v1.jpg" 
+                                    src="/smart-infra-icon.png" 
                                     alt="Smart-Infra AI" 
                                     style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', borderRadius: '10px' }} 
                                 />
@@ -312,7 +312,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                             boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
                                         }}>
                                             <img 
-                                                src="/smart-infra-logo-v1.jpg" 
+                                                src="/smart-infra-icon.png" 
                                                 alt="AI" 
                                                 style={{ 
                                                     width: '100%', 
@@ -390,7 +390,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
 
                         {isTyping && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', width: 'fit-content', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' }}>
-                                <img src="/smart-infra-logo-v1.jpg" alt="AI" style={{ width: '20px', height: '20px', borderRadius: '6px', objectFit: 'contain', background: '#0a0f1e', padding: '1px' }} />
+                                <img src="/smart-infra-icon.png" alt="AI" style={{ width: '20px', height: '20px', borderRadius: '6px', objectFit: 'contain', background: '#0a0f1e', padding: '1px' }} />
                                 <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Advisor is thinking...</span>
                             </div>
                         )}
@@ -534,7 +534,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                             justifyContent: 'center'
                         }}>
                             <img 
-                                src="/smart-infra-logo-v1.jpg" 
+                                src="/smart-infra-icon.png" 
                                 alt="Smart-Infra AI" 
                                 style={{ 
                                     width: '100%', 

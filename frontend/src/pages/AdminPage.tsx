@@ -98,7 +98,7 @@ export default function AdminPage() {
                 className="ap-sidebar"
             >
                 <div className="ap-brand">
-                    <img src="/smart-infra-logo-v1.jpg" alt="Smart-Infra AI Logo" className="ap-logo" />
+                    <img src="/smart-infra-icon.png" alt="Smart-Infra AI Logo" className="ap-logo" />
                     <h2>Smart-Infra AI</h2>
                 </div>
                 <nav className="ap-nav">

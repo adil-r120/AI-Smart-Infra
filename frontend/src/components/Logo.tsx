@@ -66,7 +66,7 @@ const Logo: React.FC<LogoProps> = ({
     return (
         <div className="logo-container" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div className="logo-icon-wrapper">
-                <img src="/smart-infra-logo-v1.jpg" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                <img src="/smart-infra-icon.png" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
             </div>
             {showText && (
                 <div className="logo-text" style={{ fontSize: text, display: 'flex', alignItems: 'center', gap: '4px' }}>

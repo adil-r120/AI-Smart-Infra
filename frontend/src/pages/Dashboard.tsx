@@ -144,8 +144,8 @@ const Dashboard: React.FC = () => {
             if (!user?.is_admin && (saved === "Dashboard" || saved === "Admin" || saved === "History")) {
                 return "Home";
             }
-            // Admin cannot access user-only tabs (Home, Scanner, Webcam, Report, MyReports)
-            if (user?.is_admin && (saved === "Home" || saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
+            // Admin cannot access user-only tabs (Scanner, Webcam, Report, MyReports)
+            if (user?.is_admin && (saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
                 return "Dashboard";
             }
             return saved;
@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
     useEffect(() => {
         if (!user?.is_admin && (activeTab === "Dashboard" || activeTab === "Admin" || activeTab === "History")) {
             setActiveTab("Home");
-        } else if (user?.is_admin && (activeTab === "Home" || activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
+        } else if (user?.is_admin && (activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
             setActiveTab("Dashboard");
         } else {
             localStorage.setItem("si_active_tab", activeTab);
@@ -921,7 +921,7 @@ const Dashboard: React.FC = () => {
     );
 
     return (
-        <div className={`dashboard-root ${theme}-theme`}>
+        <div className={`dashboard-root ${theme}-theme ${activeTab === 'Home' ? 'is-home-tab' : ''}`}>
 
             <header className="top-full-header" style={{ flexShrink: 0, zIndex: 999 }}>
                 <div className="header-left-group">
@@ -1226,15 +1226,19 @@ const Dashboard: React.FC = () => {
             <div className="tab-container">
                 <Sidebar
                     activeTab={activeTab}
-                    setActiveTab={setActiveTab}
+                    setActiveTab={(tab) => {
+                        setActiveTab(tab);
+                        setSidebarOpen(false);
+                    }}
                     cameraActive={cameraActive}
                     handleCameraToggle={handleCameraToggle}
                     isOpen={sidebarOpen}
                     toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                    closeSidebar={() => setSidebarOpen(false)}
                 />
 
                 <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div className="tab-content-wrapper">
+                    <div className={`tab-content-wrapper ${activeTab === "Home" ? "home-tab-wrapper" : ""}`}>
                         {activeTab === "Dashboard" && user?.is_admin && (
                             <div className="animate-in dashboard-home">
                                 <div className="dashboard-header">
@@ -1270,8 +1274,15 @@ const Dashboard: React.FC = () => {
                             </div>
                         )}
 
-                        {activeTab === "Home" && !user?.is_admin && (
-                            <EditorialHome setActiveTab={setActiveTab} />
+                        {activeTab === "Home" && (
+                            <EditorialHome
+                                setActiveTab={(tab) => {
+                                    setActiveTab(tab);
+                                    setSidebarOpen(false);
+                                }}
+                                theme={theme}
+                                toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            />
                         )}
 
                         {activeTab === "Scanner" && !user?.is_admin && (
