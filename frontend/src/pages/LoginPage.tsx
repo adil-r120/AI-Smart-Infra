@@ -182,7 +182,9 @@ export default function LoginPage() {
                             <img src="/smart-infra-icon.png" alt="Smart-Infra AI Logo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                         </div>
                     </div>
-                    <h1 className="lp-product">{t("auth.brand.title")}</h1>
+                    <h1 className="lp-product">
+                        Smart-Infra <span className="lp-product-ai">AI</span>
+                    </h1>
                     <p className="lp-tagline">{t("auth.brand.tagline")}</p>
                 </div>
             </div>
@@ -507,11 +509,17 @@ export default function LoginPage() {
                 }
 
                 .lp-product {
-                    font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900; color: white;
+                    font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 900; color: #ffffff;
                     letter-spacing: -0.045em; margin: 0 0 10px;
-                    background: linear-gradient(135deg, #fff 35%, #a5b4fc 75%, #818cf8);
-                    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                     line-height: 1.1;
+                }
+                .lp-product-ai {
+                    background: linear-gradient(135deg, var(--primary, #f97316), #8b5cf6);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    display: inline-block;
+                    filter: drop-shadow(0 0 16px rgba(249, 115, 22, 0.45));
                 }
                 .lp-tagline {
                     font-size: clamp(0.9rem, 1.4vw, 1.05rem); color: rgba(255,255,255,0.78);
