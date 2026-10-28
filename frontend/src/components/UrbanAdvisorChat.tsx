@@ -166,13 +166,13 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                         bottom: '80px',
                         right: '0',
                         width: '420px',
-                        height: '600px',
+                        height: '520px',
                         maxWidth: 'calc(100vw - 36px)',
                         maxHeight: 'calc(100vh - 110px)',
-                        background: '#ffffff',
+                        background: 'var(--bg-card, #1e1e1e)',
                         borderRadius: '24px',
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 25px 60px -10px rgba(0, 0, 0, 0.18), 0 0 25px rgba(99, 102, 241, 0.12)',
+                        border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
+                        boxShadow: '0 25px 60px -10px rgba(0, 0, 0, 0.45), 0 0 25px rgba(56, 189, 248, 0.18)',
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden',
@@ -182,8 +182,8 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                     {/* Header */}
                     <div style={{
                         padding: '16px 20px',
-                        background: '#ffffff',
-                        borderBottom: '1px solid #e2e8f0',
+                        background: 'var(--bg-surface, #262626)',
+                        borderBottom: '1px solid var(--border, rgba(255, 255, 255, 0.08))',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -195,7 +195,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                 height: '44px',
                                 borderRadius: '12px',
                                 background: '#0a0f1e',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -214,7 +214,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                     margin: 0,
                                     fontSize: '0.98rem',
                                     fontWeight: 800,
-                                    color: '#0f172a',
+                                    color: 'var(--text-main, #ffffff)',
                                     letterSpacing: '-0.01em',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -233,7 +233,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                     }} />
                                     <span style={{
                                         fontSize: '0.68rem',
-                                        color: '#059669',
+                                        color: '#10b981',
                                         fontWeight: 700,
                                         letterSpacing: '0.06em',
                                         textTransform: 'uppercase'
@@ -251,9 +251,9 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                 width: '32px',
                                 height: '32px',
                                 borderRadius: '50%',
-                                background: '#f1f5f9',
-                                border: '1px solid #e2e8f0',
-                                color: '#64748b',
+                                background: 'var(--bg-hover, rgba(255, 255, 255, 0.08))',
+                                border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
+                                color: 'var(--text-muted, #94a3b8)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -275,7 +275,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '16px',
-                            background: '#f8fafc'
+                            background: 'var(--bg-body, #121212)'
                         }}
                     >
                         {messages.map((msg) => (
@@ -300,8 +300,8 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                             width: '28px',
                                             height: '28px',
                                             borderRadius: '8px',
-                                            background: '#0a0f1e',
-                                            border: '1px solid #e2e8f0',
+                                            background: '#181818',
+                                            border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -331,17 +331,17 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                         fontSize: '0.9rem',
                                         lineHeight: 1.55,
                                         background: msg.sender === 'user' 
-                                            ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' 
-                                            : '#ffffff',
-                                        color: msg.sender === 'user' ? '#ffffff' : '#1e293b',
+                                            ? 'linear-gradient(135deg, #0284c7, #38bdf8)' 
+                                            : 'var(--bg-card, #1e1e1e)',
+                                        color: msg.sender === 'user' ? '#ffffff' : 'var(--text-main, #f1f5f9)',
                                         border: msg.sender === 'user'
-                                            ? '1px solid rgba(99, 102, 241, 0.4)'
-                                            : '1px solid #e2e8f0',
+                                            ? '1px solid rgba(56, 189, 248, 0.35)'
+                                            : '1px solid var(--border, rgba(255, 255, 255, 0.08))',
                                         borderTopRightRadius: msg.sender === 'user' ? '4px' : '16px',
                                         borderTopLeftRadius: msg.sender === 'ai' ? '4px' : '16px',
                                         boxShadow: msg.sender === 'user'
-                                            ? '0 4px 14px rgba(99, 102, 241, 0.28)'
-                                            : '0 2px 8px rgba(0, 0, 0, 0.05)',
+                                            ? '0 4px 14px rgba(56, 189, 248, 0.25)'
+                                            : '0 2px 8px rgba(0, 0, 0, 0.25)',
                                         whiteSpace: 'pre-line'
                                     }}>
                                         {msg.text}
@@ -360,7 +360,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                                     gap: '6px',
                                                     padding: '7px 14px',
                                                     borderRadius: '8px',
-                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                    background: 'linear-gradient(135deg, #0284c7, #38bdf8)',
                                                     border: 'none',
                                                     color: '#ffffff',
                                                     fontWeight: 700,
@@ -378,7 +378,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
 
                                 <span style={{
                                     fontSize: '0.64rem',
-                                    color: '#94a3b8',
+                                    color: 'var(--text-muted, #94a3b8)',
                                     marginTop: '2px',
                                     padding: '0 4px',
                                     marginLeft: msg.sender === 'ai' ? '34px' : '0'
@@ -389,9 +389,9 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                         ))}
 
                         {isTyping && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', width: 'fit-content', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-card, #1e1e1e)', border: '1px solid var(--border, rgba(255, 255, 255, 0.08))', borderRadius: '12px', width: 'fit-content', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)' }}>
                                 <img src="/smart-infra-icon.png" alt="AI" style={{ width: '20px', height: '20px', borderRadius: '6px', objectFit: 'contain', background: '#0a0f1e', padding: '1px' }} />
-                                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Advisor is thinking...</span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted, #94a3b8)' }}>Advisor is thinking...</span>
                             </div>
                         )}
 
@@ -404,19 +404,20 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                         display: 'flex',
                         gap: '8px',
                         overflowX: 'auto',
-                        background: '#ffffff',
-                        borderTop: '1px solid #e2e8f0'
+                        background: 'var(--bg-surface, #262626)',
+                        borderTop: '1px solid var(--border, rgba(255, 255, 255, 0.08))'
                     }}>
                         {suggestions.map((item, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => handleSend(item.query)}
+                                className="uac-suggestion-chip"
                                 style={{
                                     padding: '6px 12px',
                                     borderRadius: '99px',
-                                    background: '#f8fafc',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#334155',
+                                    background: 'var(--bg-card, #1e1e1e)',
+                                    border: '1px solid var(--border, rgba(255, 255, 255, 0.12))',
+                                    color: 'var(--text-main, #f1f5f9)',
                                     fontSize: '0.74rem',
                                     fontWeight: 600,
                                     whiteSpace: 'nowrap',
@@ -428,7 +429,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
                                 }}
                             >
-                                <Sparkles size={11} color="#6366f1" />
+                                <Sparkles size={11} color="#38bdf8" />
                                 <span>{item.label}</span>
                             </button>
                         ))}
@@ -437,8 +438,8 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                     {/* Input Bar */}
                     <div style={{
                         padding: '14px 16px',
-                        background: '#ffffff',
-                        borderTop: '1px solid #e2e8f0'
+                        background: 'var(--bg-surface, #262626)',
+                        borderTop: '1px solid var(--border, rgba(255, 255, 255, 0.08))'
                     }}>
                         <form 
                             onSubmit={(e) => {
@@ -453,19 +454,20 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     placeholder="Ask anything about safety..."
+                                    className="uac-input"
                                     style={{
                                         width: '100%',
-                                        background: '#f8fafc',
-                                        border: '1.5px solid #cbd5e1',
+                                        background: 'var(--bg-input, #181818)',
+                                        border: '1.5px solid var(--border, rgba(255, 255, 255, 0.12))',
                                         borderRadius: '12px',
                                         padding: '11px 14px 11px 36px',
-                                        color: '#0f172a',
+                                        color: 'var(--text-main, #ffffff)',
                                         fontSize: '0.88rem',
                                         outline: 'none',
                                         boxSizing: 'border-box'
                                     }}
                                 />
-                                <Terminal size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6366f1' }} />
+                                <Terminal size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#38bdf8' }} />
                             </div>
 
                             <button 
@@ -476,16 +478,16 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                                     height: '40px',
                                     borderRadius: '12px',
                                     background: input.trim() 
-                                        ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' 
-                                        : '#f1f5f9',
-                                    color: input.trim() ? '#ffffff' : '#94a3b8',
+                                        ? 'linear-gradient(135deg, #0284c7, #38bdf8)' 
+                                        : 'var(--bg-card, #1e1e1e)',
+                                    color: input.trim() ? '#ffffff' : 'var(--text-muted, #94a3b8)',
                                     border: 'none',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     cursor: input.trim() ? 'pointer' : 'default',
                                     transition: 'all 0.2s',
-                                    boxShadow: input.trim() ? '0 4px 14px rgba(99, 102, 241, 0.4)' : 'none',
+                                    boxShadow: input.trim() ? '0 4px 14px rgba(56, 189, 248, 0.35)' : 'none',
                                     flexShrink: 0
                                 }}
                             >
@@ -505,14 +507,14 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                     width: '60px',
                     height: '60px',
                     borderRadius: '16px',
-                    background: '#ffffff',
-                    border: '1.5px solid #e2e8f0',
-                    color: '#0f172a',
+                    background: 'var(--bg-card, #1e1e1e)',
+                    border: '1.5px solid var(--border, rgba(255, 255, 255, 0.15))',
+                    color: 'var(--text-main, #ffffff)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15), 0 0 20px rgba(99, 102, 241, 0.25)',
+                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35), 0 0 20px rgba(56, 189, 248, 0.25)',
                     transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
                     position: 'relative',
                     padding: '3px',
@@ -520,7 +522,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                 }}
             >
                 {isOpen ? (
-                    <X size={26} color="#6366f1" />
+                    <X size={26} color="#38bdf8" />
                 ) : (
                     <>
                         <div style={{
@@ -553,7 +555,7 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
                             height: '13px',
                             borderRadius: '50%',
                             background: '#10b981',
-                            border: '2.5px solid #ffffff',
+                            border: '2.5px solid var(--bg-card, #1e1e1e)',
                             boxShadow: '0 0 8px #10b981'
                         }} />
                     </>
@@ -561,6 +563,16 @@ const UrbanAdvisorChat: React.FC<UrbanAdvisorChatProps> = ({ setActiveTab }) => 
             </button>
 
             <style>{`
+                .uac-suggestion-chip:hover {
+                    border-color: #38bdf8 !important;
+                    color: #38bdf8 !important;
+                    background: rgba(56, 189, 248, 0.1) !important;
+                    transform: translateY(-1px);
+                }
+                .uac-input:focus {
+                    border-color: #38bdf8 !important;
+                    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+                }
                 @keyframes uac-pop-in {
                     from {
                         opacity: 0;

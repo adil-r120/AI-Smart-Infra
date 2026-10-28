@@ -17,7 +17,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive
     const allMenuItems = [
         ...(user?.is_admin ? [
             { id: "Dashboard", label: "Dashboard", Icon: LayoutDashboard },
-            { id: "Home", label: "Home", Icon: Home },
             { id: "Admin", label: "Admin Console", Icon: ShieldAlert },
             { id: "History", label: "Detection Log", Icon: Calendar },
         ] : []),
@@ -119,8 +118,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive
 
                 .nav-item-v2:hover {
                     color: var(--primary);
-                    background: var(--bg-hover, rgba(249, 115, 22, 0.06));
-                    border-color: rgba(249, 115, 22, 0.12);
+                    background: var(--bg-hover, rgba(56, 189, 248, 0.06));
+                    border-color: rgba(56, 189, 248, 0.12);
                     transform: translateX(4px);
                 }
 
@@ -132,9 +131,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, cameraActive
                 .nav-item-v2.active {
                     background: var(--primary-glow);
                     color: var(--primary);
-                    border-color: rgba(249, 115, 22, 0.25);
+                    border-color: rgba(56, 189, 248, 0.25);
                     border-left: 3.5px solid var(--primary);
-                    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.12);
+                    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.12);
                     font-weight: 700;
                 }
 

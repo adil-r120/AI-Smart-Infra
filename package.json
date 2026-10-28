@@ -6,7 +6,8 @@
         "launch": "scripts\\start_silent.bat",
         "dev": "concurrently --names \"backend,frontend\" --prefix \"[{name}]\" --restart-tries 20 --restart-after 2000 \"npm run backend\" \"npm run frontend\"",
         "backend": ".\\backend\\venv\\Scripts\\python.exe backend\\run.py",
-        "frontend": "npm --prefix frontend run dev"
+        "frontend": "npm --prefix frontend run dev",
+        "build": "npm --prefix frontend run build"
     },
     "dependencies": {
         "concurrently": "^7.6.0"

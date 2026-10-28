@@ -55,9 +55,9 @@
     text-transform: uppercase;
     padding: 3px 10px;
     border-radius: 6px;
-    background: rgba(249, 115, 22, 0.12);
+    background: rgba(56, 189, 248, 0.12);
     color: var(--primary);
-    border: 1px solid rgba(249, 115, 22, 0.25);
+    border: 1px solid rgba(56, 189, 248, 0.25);
 }
 
 .admin-pulse-dot {
@@ -203,8 +203,8 @@
 
 .admin-stat-card.active-tab-filter {
     border-color: var(--card-accent, var(--primary));
-    background: var(--card-accent-bg, rgba(249, 115, 22, 0.06));
-    box-shadow: 0 0 0 2px var(--card-accent-border, rgba(249, 115, 22, 0.3));
+    background: var(--card-accent-bg, rgba(56, 189, 248, 0.06));
+    box-shadow: 0 0 0 2px var(--card-accent-border, rgba(56, 189, 248, 0.3));
 }
 
 .admin-stat-card.active-tab-filter::after {
@@ -393,7 +393,7 @@
     align-items: center;
     gap: 16px;
     flex-wrap: wrap;
-    background-image: radial-gradient(circle at 90% 20%, rgba(249, 115, 22, 0.08), transparent 40%);
+    background-image: radial-gradient(circle at 90% 20%, rgba(56, 189, 248, 0.08), transparent 40%);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
 }
 
@@ -787,7 +787,7 @@
 }
 
 .admin-enterprise-table tr.selected-row td {
-    background: rgba(249, 115, 22, 0.06);
+    background: rgba(56, 189, 248, 0.06);
 }
 
 .admin-enterprise-table tr.selected-row td:first-child {
@@ -1245,7 +1245,7 @@
 }
 
 .admin-modal-card {
-    background: #0f172a;
+    background: var(--bg-card);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 16px;
     width: 100%;
@@ -1360,7 +1360,7 @@
 .admin-quick-chip:hover {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(249, 115, 22, 0.08);
+    background: rgba(56, 189, 248, 0.08);
 }
 
 .admin-modal-footer {

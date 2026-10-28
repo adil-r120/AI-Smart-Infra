@@ -40,6 +40,8 @@ export default function LoginPage() {
     const passwordsMatch = password === confirmPassword;
 
     useEffect(() => {
+        document.documentElement.classList.remove("light-theme");
+        document.documentElement.classList.add("dark-theme");
         document.title = "Smart-Infra AI";
         let meta = document.querySelector('meta[name="description"]');
         if (!meta) {
@@ -462,7 +464,75 @@ export default function LoginPage() {
 
                 *, *::before, *::after { box-sizing: border-box; }
 
-                .lp-root {
+                .lp-root,
+                .lp-root * {
+                    color-scheme: dark;
+                }
+                .lp-root :is(h1, h2, h3, h4, h5, h6, .lp-card-title) {
+                    color: #ffffff !important;
+                }
+                .lp-root .lp-card-sub {
+                    color: rgba(255, 255, 255, 0.75) !important;
+                }
+                .lp-root .lp-tagline {
+                    color: rgba(255, 255, 255, 0.85) !important;
+                }
+                .lp-root .lp-field label {
+                    color: rgba(255, 255, 255, 0.85) !important;
+                }
+                .lp-root .lp-toggle button {
+                    color: rgba(255, 255, 255, 0.75) !important;
+                }
+                .lp-root .lp-toggle button.active {
+                    color: #ffffff !important;
+                    background: rgba(56, 189, 248, 0.25) !important;
+                    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.25) !important;
+                }
+                .lp-root .lp-toggle button:not(.active):hover {
+                    color: #ffffff !important;
+                    background: rgba(255, 255, 255, 0.1) !important;
+                }
+                .lp-root .lp-input-wrap input {
+                    color: #ffffff !important;
+                }
+                .lp-root .lp-input-wrap input::placeholder {
+                    color: rgba(255, 255, 255, 0.45) !important;
+                }
+                .lp-root .lp-input-wrap input:focus {
+                    border-color: #38bdf8 !important;
+                    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
+                }
+                .lp-root .lp-remember span {
+                    color: rgba(255, 255, 255, 0.75) !important;
+                }
+                .lp-root .lp-forgot {
+                    color: #38bdf8 !important;
+                }
+                .lp-root .lp-forgot:hover {
+                    color: #7dd3fc !important;
+                }
+                .lp-root .lp-submit {
+                    color: #ffffff !important;
+                    background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+                    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35) !important;
+                }
+                .lp-root .lp-submit:hover:not(:disabled) {
+                    background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+                    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.45) !important;
+                }
+                .lp-root .lp-switch {
+                    color: rgba(255, 255, 255, 0.75) !important;
+                }
+                .lp-root .lp-switch button {
+                    color: #38bdf8 !important;
+                }
+                .lp-root .lp-legal button {
+                    color: rgba(255, 255, 255, 0.55) !important;
+                }
+                .lp-root .lp-legal button:hover {
+                    color: #ffffff !important;
+                }
+                .lp-root { color: #ffffff;
                     display: flex; min-height: 100vh; height: 100vh; width: 100%;
                     overflow: hidden; position: relative;
                     background: #050814;
@@ -604,10 +674,10 @@ export default function LoginPage() {
                     display: inline-block;
                 }
                 .lp-product-ai {
-                    background: linear-gradient(135deg, var(--primary, #f97316), #8b5cf6);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
+                    background: linear-gradient(135deg, #f97316, #8b5cf6) !important;
+                    -webkit-background-clip: text !important;
+                    -webkit-text-fill-color: transparent !important;
+                    background-clip: text !important;
                     display: inline-block;
                     filter: drop-shadow(0 0 16px rgba(249, 115, 22, 0.45));
                 }

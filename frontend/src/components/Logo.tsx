@@ -95,7 +95,7 @@ const Logo: React.FC<LogoProps> = ({
                     width: ${wrapper}px;
                     height: ${wrapper}px;
                     border-radius: 12px;
-                    background: #0a0f1e;
+                    background: #181818;
                     border: 1px solid rgba(255, 255, 255, 0.12);
                     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
                     display: flex;
@@ -114,17 +114,33 @@ const Logo: React.FC<LogoProps> = ({
                 }
 
                 .logo-main {
-                    background: linear-gradient(135deg, #fff 35%, #a5b4fc 75%, #818cf8);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
+                    color: var(--text-main, #ffffff);
+                    font-weight: 800;
+                    transition: color 0.2s ease;
+                }
+
+                .dark-theme .logo-main,
+                .dashboard-root.dark-theme .logo-main {
+                    color: #ffffff !important;
+                    background: none !important;
+                    -webkit-text-fill-color: #ffffff !important;
+                    background-clip: unset !important;
+                }
+
+                .light-theme .logo-main,
+                .dashboard-root.light-theme .logo-main {
+                    color: #0f172a;
+                    background: linear-gradient(135deg, #0f172a 35%, #1e293b 70%, #2563eb) !important;
+                    -webkit-background-clip: text !important;
+                    -webkit-text-fill-color: transparent !important;
+                    background-clip: text !important;
                 }
 
                 .logo-accent {
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
+                    background: linear-gradient(135deg, #f97316, #8b5cf6) !important;
+                    -webkit-background-clip: text !important;
+                    -webkit-text-fill-color: transparent !important;
+                    background-clip: text !important;
                 }
 
                 .logo-weather-badge {
@@ -145,9 +161,9 @@ const Logo: React.FC<LogoProps> = ({
                 }
 
                 .logo-weather-badge:hover {
-                    color: var(--text-main);
-                    border-color: var(--primary);
-                    background: var(--primary-glow);
+                    color: var(--accent-hover, #38bdf8);
+                    border-color: var(--accent-hover, #38bdf8);
+                    background: rgba(56, 189, 248, 0.1);
                 }
 
                 @media (max-width: 768px) {

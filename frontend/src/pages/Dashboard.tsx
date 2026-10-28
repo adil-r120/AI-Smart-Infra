@@ -145,7 +145,7 @@ const Dashboard: React.FC = () => {
                 return "Home";
             }
             // Admin cannot access user-only tabs (Scanner, Webcam, Report, MyReports)
-            if (user?.is_admin && (saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
+            if (user?.is_admin && (saved === "Home" || saved === "Scanner" || saved === "Webcam" || saved === "Report" || saved === "MyReports")) {
                 return "Dashboard";
             }
             return saved;
@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
     useEffect(() => {
         if (!user?.is_admin && (activeTab === "Dashboard" || activeTab === "Admin" || activeTab === "History")) {
             setActiveTab("Home");
-        } else if (user?.is_admin && (activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
+        } else if (user?.is_admin && (activeTab === "Home" || activeTab === "Scanner" || activeTab === "Webcam" || activeTab === "Report" || activeTab === "MyReports")) {
             setActiveTab("Dashboard");
         } else {
             localStorage.setItem("si_active_tab", activeTab);
@@ -167,9 +167,17 @@ const Dashboard: React.FC = () => {
     const [mapData, setMapData] = useState<DBEntry[]>([]);
     const [cameraActive, setCameraActive] = useState(false);
     const [cameraSource, setCameraSource] = useState<string>(() => localStorage.getItem("si_camera_source") || "");
-    const [theme, setTheme] = useState<"dark" | "light">(
-        () => (localStorage.getItem("si_theme") as "dark" | "light") || "light"
-    );
+    const [theme, setTheme] = useState<"dark" | "light">(() => {
+        const saved = localStorage.getItem("si_theme_mode");
+        const v2 = localStorage.getItem("si_palette_charcoal_v2");
+        if (!v2) {
+            localStorage.setItem("si_palette_charcoal_v2", "true");
+            localStorage.setItem("si_theme_mode", "dark");
+            localStorage.setItem("si_theme", "dark");
+            return "dark";
+        }
+        return saved === "light" ? "light" : "dark";
+    });
     const [isDragging, setIsDragging] = useState(false);
     const [scannerStatus, setScannerStatus] = useState<string | null>(null);
     const [alerts, setAlerts] = useState<any[]>([]);
@@ -266,7 +274,10 @@ const Dashboard: React.FC = () => {
     }, [showNotifications]);
 
     useEffect(() => {
+        localStorage.setItem("si_theme_mode", theme);
         localStorage.setItem("si_theme", theme);
+        document.documentElement.classList.remove("light-theme", "dark-theme");
+        document.documentElement.classList.add(`${theme}-theme`);
     }, [theme]);
 
     useEffect(() => {
@@ -921,7 +932,7 @@ const Dashboard: React.FC = () => {
     );
 
     return (
-        <div className={`dashboard-root ${theme}-theme ${activeTab === 'Home' ? 'is-home-tab' : ''}`}>
+        <div className={`dashboard-root ${theme}-theme ${activeTab === 'Home' && !user?.is_admin ? 'is-home-tab' : ''}`}>
 
             <header className="top-full-header" style={{ flexShrink: 0, zIndex: 999 }}>
                 <div className="header-left-group">
@@ -1238,7 +1249,7 @@ const Dashboard: React.FC = () => {
                 />
 
                 <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div className={`tab-content-wrapper ${activeTab === "Home" ? "home-tab-wrapper" : ""}`}>
+                    <div className={`tab-content-wrapper ${activeTab === "Home" && !user?.is_admin ? "home-tab-wrapper" : ""}`}>
                         {activeTab === "Dashboard" && user?.is_admin && (
                             <div className="animate-in dashboard-home">
                                 <div className="dashboard-header">
@@ -1274,7 +1285,7 @@ const Dashboard: React.FC = () => {
                             </div>
                         )}
 
-                        {activeTab === "Home" && (
+                        {activeTab === "Home" && !user?.is_admin && (
                             <EditorialHome
                                 setActiveTab={(tab) => {
                                     setActiveTab(tab);

@@ -61,7 +61,7 @@
     border-radius: 99px;
     background: var(--primary-glow);
     color: var(--primary);
-    border: 1px solid rgba(249, 115, 22, 0.25);
+    border: 1px solid rgba(56, 189, 248, 0.25);
 }
 
 .aiconfig-status-chip {
@@ -217,7 +217,7 @@
 .aiconfig-nav-btn.active {
     background: var(--primary-glow);
     color: var(--primary);
-    border-color: rgba(249, 115, 22, 0.25);
+    border-color: rgba(56, 189, 248, 0.25);
     box-shadow: 0 2px 10px var(--primary-glow);
 }
 
@@ -484,7 +484,7 @@
     border-radius: 8px;
     background: var(--primary-glow);
     color: var(--primary);
-    border: 1px solid rgba(249, 115, 22, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 .aiconfig-slider-ticks {
