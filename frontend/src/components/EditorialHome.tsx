@@ -334,7 +334,7 @@ const EditorialHome: React.FC<EditorialHomeProps> = ({ setActiveTab, theme, togg
               <div className="hero-badge-wrap">
                 <span className="hero-mini-pill">
                   <span className="pulse-beacon" />
-                  <Eye size={12} className="beacon-icon" />
+                  {/* <Eye size={12} className="beacon-icon" /> */}
                   <span>Smart-Infra: AI Infrastructure Monitoring System</span>
                 </span>
               </div>
