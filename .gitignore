@@ -10,6 +10,24 @@
 .env.*.local
 backend/.env
 
+# Private keys, certificates, and secrets
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
+secrets/
+*secret*.json
+credentials*.json
+service-account*.json
+serviceAccountKey*.json
+client_secret*.json
+
+# Database dumps & backup exports containing potential private data
+*.dump
+*.bak
+
 # --- BACKEND / PYTHON ---
 # Exclude Python runtime artifacts, compilations, and virtual environments
 __pycache__/

@@ -128,27 +128,34 @@ The local Vite development server will be available at `http://localhost:5173`.
 
 ---
 
-## 🔐 Default Credentials & Ports
+## 🔐 Authentication & Access Control
 
-| Role | Username / Email | Password |How to Access Admin Code |
-| :--- | :--- | :--- | :--- |
-| **System Administrator** | `smartinfra.com` | `Create by yourself...` | `Ask to Admin` |
-| **User Administrator** | `smartinfra.com` | `Create by yourself...`|
+Access control and administrative privileges are enforced through secure role-based tokens:
+
+- **Administrative Signup:** Admin registration requires a private verification code configured in your local environment (`ADMIN_SIGNUP_CODE`).
+- **Initial Setup:** The deployment administrator defines this code privately before deployment. It is **never** committed to version control.
+- **Account Creation:** Users and officers register their own distinct credentials through the application interface during first-time setup.
 
 ---
 
-## ⚙️ Environment Variables
+## ⚙️ Environment Variables & Configuration
 
-Configure backend settings via `backend/.env`:
+All secrets and system configurations are kept strictly confidential in `backend/.env` (which is excluded from Git via `.gitignore`). 
 
-| Variable | Description | Example Default |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | SQLAlchemy connection string | `*****************`|
-| `JWT_SECRET` | Secret key for JWT token signing | `**************` |
-| `ADMIN_SIGNUP_CODE` | Verification code required for Admin signup | `Ask to Admin.....` |
-| `DETECTION_THRESHOLD` | Confidence threshold for YOLO detection | `0.15` |
-| `AI_PROVIDER` | LLM backend for Urban Advisor | `BYTEZ` or `GEMINI` |
-| `AI_API_KEY` | API Key for generative advisory | `<YOUR_API_KEY>` |
+To configure your local environment, copy the template:
+```powershell
+cp backend/.env.example backend/.env
+```
+
+| Variable | Description | Required | Recommended Format / Default |
+| :--- | :--- | :---: | :--- |
+| `DATABASE_URL` | SQLAlchemy connection URI | **Yes** | `mysql+pymysql://<user>:<password>@localhost:3306/smart_infra` |
+| `JWT_SECRET` | Secret key for cryptographic JWT signing | **Yes** | Generate with: `openssl rand -hex 32` |
+| `ADMIN_SIGNUP_CODE` | Private passphrase required for Admin registration | **Yes** | Long, high-entropy custom secret passphrase |
+| `ADMIN_INVITE_TTL_HOURS` | Lifetime for admin invitation tokens (hours) | No | `24` |
+| `DETECTION_THRESHOLD` | Confidence threshold for YOLO detection | No | `0.45` (Range: `0.10` - `1.00`) |
+| `AI_PROVIDER` | LLM backend for Urban Advisor | No | `GEMINI` or `BYTEZ` |
+| `AI_API_KEY` | LLM API Key (stored privately in local `.env`) | Optional | Set locally when using generative AI features |
 
 ---
 
@@ -199,10 +206,18 @@ Smart-Infra/
 
 ---
 
-## 🛡️ Security & Notes
-- **API Configuration**: All API communication is routed through `/api/` or same-origin reverse proxy in production to avoid CORS overhead.
-- **Smart Mirroring**: Real-time camera feeds utilize intelligent coordinate transformation to align HUD bounding boxes with mirrored video.
-- **Sensitive Credentials**: Passwords containing special characters (`@`) must be URL-encoded (`%40`) in database connection strings.
+## 🛡️ Security & Privacy Architecture
+
+Smart-Infra implements defense-in-depth protection across all layers:
+
+- **Zero-Secrets Policy:** Real credentials, database passwords, JWT signing keys, and admin signup codes are **never** committed to version control or published in this repository.
+- **Local Environment Isolation:** All production secrets reside exclusively in local `backend/.env` files, strictly ignored via [.gitignore](file:///c:/Users/mdadi/OneDrive/Desktop/Smart-Infra/.gitignore).
+- **Anti-Brute Force Protection:** Authentication endpoints (`/auth/login` and `/auth/register`) enforce dynamic IP/email rate-limiting with automated lockouts and audit logging to thwart credential stuffing and dictionary attacks.
+- **Secure File Upload Pipeline:** Image uploads in citizen reporting feature cryptographic UUID file renaming, strict extension/MIME-type whitelisting (`.jpg`, `.jpeg`, `.png`, `.webp`), and streaming size enforcement (max 10MB) to eliminate Path Traversal and Remote Code Execution (RCE).
+- **Admin Verification Gate:** Self-service administrative registration requires a locally verified `ADMIN_SIGNUP_CODE` with placeholder blacklist rejection, or single-use invitation tokens with a 24-hour expiration window.
+- **Protected Hardware & Process Feeds:** Camera activation (`/start-camera`, `/stop-camera`) is strictly guarded behind user session authentication and input sanitization to eliminate command injection.
+- **HTTP Defense Headers:** Standard security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`) protect client sessions from clickjacking, MIME sniffing, and cross-site leaks.
+- **Credential Sanitization:** If database connection strings contain special characters (such as `@`), encode them (e.g., `%40`) to maintain URI integrity.
 
 ---
 

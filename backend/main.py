@@ -29,6 +29,7 @@ import shutil
 import os
 import random
 import subprocess
+import uuid
 import sys
 import time
 import secrets
@@ -46,11 +47,16 @@ PRIVACY_CLASSES = {"person", "car", "motorcycle", "bus", "truck", "face"}
 camera_process = None
 trackers: dict[str, Any] = {}
 register_attempts: dict[str, list[float]] = {}
+login_attempts: dict[str, list[float]] = {}
 
 REGISTER_RATE_LIMIT_MAX_ATTEMPTS = int(
     os.getenv("REGISTER_RATE_LIMIT_MAX_ATTEMPTS", "10"))
 REGISTER_RATE_LIMIT_WINDOW_SECONDS = int(
     os.getenv("REGISTER_RATE_LIMIT_WINDOW_SECONDS", "60"))
+LOGIN_RATE_LIMIT_MAX_ATTEMPTS = int(
+    os.getenv("LOGIN_RATE_LIMIT_MAX_ATTEMPTS", "5"))
+LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(
+    os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "60"))
 ADMIN_INVITE_TTL_HOURS = int(os.getenv("ADMIN_INVITE_TTL_HOURS", "24"))
 
 
@@ -136,6 +142,34 @@ def enforce_register_rate_limit(ip: str, email: str):
     register_attempts[key] = attempts
 
 
+def check_login_rate_limit(ip: str, email: str):
+    now_ts = time.time()
+    window_start = now_ts - LOGIN_RATE_LIMIT_WINDOW_SECONDS
+    key = f"{ip}:{email.lower()}"
+    attempts = [
+        ts for ts in login_attempts.get(key, []) if ts >= window_start
+    ]
+    login_attempts[key] = attempts
+    if len(attempts) >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Please wait 60 seconds before trying again."
+        )
+
+
+def record_failed_login(ip: str, email: str):
+    key = f"{ip}:{email.lower()}"
+    now_ts = time.time()
+    attempts = login_attempts.get(key, [])
+    attempts.append(now_ts)
+    login_attempts[key] = attempts
+
+
+def clear_login_attempts(ip: str, email: str):
+    key = f"{ip}:{email.lower()}"
+    login_attempts.pop(key, None)
+
+
 def hash_invite_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
@@ -192,13 +226,28 @@ _uploads_dir = os.path.join(
 os.makedirs(_uploads_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
 
+_cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+_allowed_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Enforce defense-in-depth HTTP security headers against XSS, clickjacking, and MIME sniffing."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 
 
 # _script_dir is defined at top of file (before lifespan)
@@ -1113,18 +1162,27 @@ async def delete_single_detection(
 
 
 @app.post("/start-camera")
-async def start_camera(source: str = "0"):
+async def start_camera(source: str = "0", current_user: User = Depends(get_current_user)):
     global camera_process
     if camera_process:
         return {"status": "already_running"}
+
+    # Sanitize and validate input to prevent command injection
+    clean_source = source.strip()
+    if clean_source.isdigit():
+        if int(clean_source) > 10:
+            raise HTTPException(status_code=400, detail="Invalid camera index.")
+    elif not (clean_source.startswith("rtsp://") or clean_source.startswith("http://") or clean_source.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid video source. Must be a camera index or stream URL.")
+
     python_exe = sys.executable
     script_path = os.path.join(_script_dir, "ai", "video_detect.py")
-    camera_process = subprocess.Popen([python_exe, script_path, source])
+    camera_process = subprocess.Popen([python_exe, script_path, clean_source])
     return {"status": "camera_started"}
 
 
 @app.post("/stop-camera")
-async def stop_camera():
+async def stop_camera(current_user: User = Depends(get_current_user)):
     global camera_process
     if camera_process:
         camera_process.terminate()
@@ -1144,11 +1202,44 @@ async def create_report(
     current_user: User = Depends(get_current_user)
 ):
     img_name = None
-    if image:
+    if image and image.filename:
+        # 1. Enforce strict extension whitelist (prevents script/executable uploads)
+        original_ext = os.path.splitext(image.filename)[1].lower()
+        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+        if original_ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file extension. Allowed formats: {', '.join(ALLOWED_EXTENSIONS)}"
+            )
+
+        # 2. Enforce MIME type whitelist
+        ALLOWED_MIMES = {"image/jpeg", "image/png", "image/webp"}
+        if image.content_type and image.content_type.lower() not in ALLOWED_MIMES:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid image format. Content-Type must be an image."
+            )
+
+        # 3. Stream with size guard (max 10MB) and generate randomized filename (no path traversal)
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
         timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        img_name = f"report_{timestamp_str}_{image.filename}"
-        with open(os.path.join(_uploads_dir, img_name), "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
+        safe_token = uuid.uuid4().hex[:12]
+        img_name = f"report_{timestamp_str}_{safe_token}{original_ext}"
+        destination_path = os.path.join(_uploads_dir, img_name)
+
+        size = 0
+        with open(destination_path, "wb") as buffer:
+            while chunk := await image.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_FILE_SIZE:
+                    buffer.close()
+                    if os.path.exists(destination_path):
+                        os.unlink(destination_path)
+                    raise HTTPException(
+                        status_code=400,
+                        detail="File too large. Maximum allowed size is 10MB."
+                    )
+                buffer.write(chunk)
 
     new_report = Report(
         problem_type=report_type,
@@ -1471,7 +1562,7 @@ def get_ai_briefing(db: Session = Depends(get_db)):
     except Exception as e:
         print(f"[CRITICAL ERROR] Briefing Endpoint Crash: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error during advisory generation.")
 
 # ── Auth Routes ─────────────────────────────────────────────────────────
 
@@ -1485,7 +1576,15 @@ def register(
     client_ip = request.client.host if request.client else "unknown"
     enforce_register_rate_limit(client_ip, body.email)
 
-    existing = db.query(User).filter(User.email == body.email).first()
+    # Password complexity and input sanity checks
+    if len(body.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    if len(body.password) > 128:
+        raise HTTPException(status_code=400, detail="Password is too long (maximum 128 characters)")
+    if len(body.name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Name must be at least 2 characters long")
+
+    existing = db.query(User).filter(User.email == body.email.strip().lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -1518,8 +1617,13 @@ def register(
                     status_code=403,
                     detail="Admin invite token has expired")
         else:
-            if not configured_admin_code:
-                log_security_event(db, f"Blocked admin signup without configured code from {client_ip} ({body.email})")
+            INSECURE_PLACEHOLDER_CODES = {
+                "replace-with-long-random-admin-code",
+                "smart-infra-production-secret-replace-me",
+                "admin", "123456", "password", "default", "changeme", "admin123"
+            }
+            if not configured_admin_code or configured_admin_code.lower() in INSECURE_PLACEHOLDER_CODES:
+                log_security_event(db, f"Blocked admin signup: unconfigured or placeholder code from {client_ip} ({body.email})")
                 raise HTTPException(
                     status_code=403,
                     detail="Admin signup is disabled")
@@ -1533,8 +1637,8 @@ def register(
         is_admin = True
 
     user = User(
-        name=body.name,
-        email=body.email,
+        name=body.name.strip(),
+        email=body.email.strip().lower(),
         hashed_password=hash_password(body.password),
         is_admin=is_admin,
     )
@@ -1549,12 +1653,21 @@ def register(
 
 
 @app.post("/auth/login", response_model=TokenResponse)
-def login(body: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == body.email).first()
+def login(body: UserLogin, request: Request, db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    check_login_rate_limit(client_ip, body.email)
+
+    user = db.query(User).filter(User.email == body.email.strip().lower()).first()
     if not user or not verify_password(body.password, user.hashed_password):
+        record_failed_login(client_ip, body.email)
+        log_security_event(db, f"Failed login attempt for {body.email} from {client_ip}")
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password")
+
+    # Reset failed attempts upon successful authentication
+    clear_login_attempts(client_ip, body.email)
+
     token = create_access_token(
         data={"sub": user.email, "is_admin": bool(user.is_admin)},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
